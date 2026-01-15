@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 人生履歷 - 穩定平衡版</title>
+    <title>CV 人生履歷 - 1/3/5 積分版</title>
     <style>
         :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --gold: #f1c40f; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
@@ -13,23 +13,16 @@
         .player-card { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
         .secret-area { background: #f8f9fa; padding: 10px; border-radius: 10px; margin: 10px 0; border: 2px dashed #cbd5e0; }
         .secret-text { display: none; color: var(--red); font-weight: bold; font-size: 1.2rem; }
-        
         .dice-display { display: flex; justify-content: center; gap: 6px; margin: 10px 0; min-height: 60px; }
         .dice { width: 50px; height: 50px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.7rem; box-shadow: 0 3px 0 rgba(0,0,0,0.1); }
-        
         .market { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .card { border: 2px solid #eee; padding: 12px; border-radius: 12px; text-align: center; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; }
-        
-        /* 適合時期的 5 分牌會亮起黃框 */
-        .card.match-highlight { border: 4px solid var(--gold); background: #fffde7; transform: scale(1.02); }
-        
-        .score-tag { font-weight: bold; color: var(--red); font-size: 16px; margin-bottom: 4px; }
+        .card.match-highlight { border: 4px solid var(--gold); background: #fffde7; transform: scale(1.02); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+        .score-tag { font-weight: bold; color: var(--red); font-size: 1.2rem; margin-bottom: 4px; }
         .res-req { font-size: 12px; color: #666; margin: 5px 0; }
         .btn-buy { background: var(--green); color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 5px; }
-        .btn-buy:disabled { background: #ccc; }
-        
-        .rank-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
         .btn-roll { background: var(--accent); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .rank-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -55,7 +48,7 @@
         <div id="res-list" style="text-align:center; font-weight:bold; margin: 8px 0; color:var(--main);">資源：等待擲骰...</div>
         <div id="miracle-hint" style="text-align:center; color:var(--gold); font-size:12px; font-weight:bold; height:15px;"></div>
 
-        <h3 style="font-size: 16px; border-left: 5px solid var(--main); padding-left: 10px; margin: 15px 0 10px 0;">固定人生商店</h3>
+        <h3 style="font-size: 16px; border-left: 5px solid var(--main); padding-left: 10px; margin: 15px 0 10px 0;">人生商店</h3>
         <div class="market" id="market-container"></div>
         
         <button onclick="switchView()" style="margin-top:20px; width:100%; padding:10px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer;">👁️ 目前排名</button>
@@ -77,24 +70,23 @@
 
     const periods = ["幼年期", "入學期", "青春期", "北漂期", "成家期", "壯年期", "危機期", "回甘期", "隱居期", "傳奇期"];
 
-    // 固定卡池設計
     const fixedMarket = [
-        // --- 5分牌：2資源，符合者+5，不合者+1 ---
-        {n:'第一名', t:'智慧', q:2, lv:5, tg:[periods[0], periods[1]]},
-        {n:'校隊明星', t:'健康', q:2, lv:5, tg:[periods[2], periods[3]]},
-        {n:'購屋置產', t:'金錢', q:2, lv:5, tg:[periods[4], periods[5]]},
-        {n:'領袖地位', t:'人際', q:2, lv:5, tg:[periods[6], periods[7]]},
-        {n:'傳奇故事', t:'智慧', q:2, lv:5, tg:[periods[8], periods[9]]},
+        // --- 5分牌：2資源，符合+5 / 不合+1 ---
+        {n:'第一名', t:'智慧', q:2, baseLv:5, tg:[periods[0], periods[1]]},
+        {n:'校隊明星', t:'健康', q:2, baseLv:5, tg:[periods[2], periods[3]]},
+        {n:'購屋置產', t:'金錢', q:2, baseLv:5, tg:[periods[4], periods[5]]},
+        {n:'領袖地位', t:'人際', q:2, baseLv:5, tg:[periods[6], periods[7]]},
+        {n:'傳奇故事', t:'智慧', q:2, baseLv:5, tg:[periods[8], periods[9]]},
 
-        // --- 3分牌：2資源，所有人買都是+3 ---
-        {n:'證照檢定', t:'智慧', q:2, lv:3, tg:[]},
-        {n:'跨國旅遊', t:'笑臉', q:2, lv:3, tg:[]},
-        {n:'健身習慣', t:'健康', q:2, lv:3, tg:[]},
+        // --- 3分牌：2資源，全體+3 ---
+        {n:'證照檢定', t:'智慧', q:2, baseLv:3, tg:[]},
+        {n:'跨國旅遊', t:'笑臉', q:2, baseLv:3, tg:[]},
+        {n:'健身習慣', t:'健康', q:2, baseLv:3, tg:[]},
 
-        // --- 1分牌：1資源，所有人買都是+1 ---
-        {n:'日常儲蓄', t:'金錢', q:1, lv:1, tg:[]},
-        {n:'週末聚餐', t:'人際', q:1, lv:1, tg:[]},
-        {n:'維持好心情', t:'笑臉', q:1, lv:1, tg:[]}
+        // --- 1分牌：1資源，全體+1 ---
+        {n:'日常儲蓄', t:'金錢', q:1, baseLv:1, tg:[]},
+        {n:'週末聚餐', t:'人際', q:1, baseLv:1, tg:[]},
+        {n:'維持好心情', t:'笑臉', q:1, baseLv:1, tg:[]}
     ];
 
     let players = [];
@@ -126,15 +118,17 @@
         const p = players[curIdx];
         document.getElementById('market-container').innerHTML = fixedMarket.map(c => {
             const isMatch = c.tg.includes(p.secret);
-            const scoreText = (c.lv === 5) ? (isMatch ? "+5" : "+1") : `+${c.lv}`;
+            let displayScore = c.baseLv;
+            if (c.baseLv === 5 && !isMatch) displayScore = 1; // 5分牌如果不合則顯示1
+            
             return `
                 <div class="card ${isMatch ? 'match-highlight' : ''}">
                     <div>
-                        <div class="score-tag">${scoreText} 分</div>
+                        <div class="score-tag">+${displayScore}</div>
                         <b style="font-size:14px;">${c.n}</b>
                         <div class="res-req">需求：${c.q}個${c.t}</div>
                     </div>
-                    <button id="btn-${c.n}" class="btn-buy" onclick="buyCard('${c.n}', '${c.t}', ${c.q}, ${c.lv}, '${c.tg.join(',')}')">購買</button>
+                    <button class="btn-buy" onclick="buyCard('${c.n}', '${c.t}', ${c.q}, ${c.baseLv}, '${c.tg.join(',')}')">購買</button>
                 </div>
             `;
         }).join('');
@@ -172,7 +166,7 @@
 
     function renderRes() {
         let txt = Object.entries(curRes).filter(([k,v])=>v>0).map(([k,v])=>`${k}x${v}`).join(' / ');
-        document.getElementById('res-list').innerText = "可用資源：" + (txt || "無");
+        document.getElementById('res-list').innerText = "資源：" + (txt || "無");
     }
 
     function buyCard(name, resType, qty, baseLv, targets) {
@@ -182,11 +176,14 @@
         if (!canBuy && curRes[resType] >= qty) { curRes[resType] -= qty; canBuy = true; }
 
         if (canBuy) {
-            let gain = (baseLv === 5) ? (tgArray.includes(p.secret) ? 5 : 1) : baseLv;
+            let gain = baseLv;
+            if (baseLv === 5) {
+                gain = tgArray.includes(p.secret) ? 5 : 1;
+            }
             p.score += gain;
             hasMiracle = false;
             document.getElementById('miracle-hint').innerText = "";
-            alert(`✅ 購入「${name}」！積分 +${gain}`);
+            alert(`✅ 購買成功！積分 +${gain}`);
             renderRes(); checkAutoNext();
         } else alert("❌ 資源不夠喔！");
     }
@@ -194,7 +191,7 @@
     function checkAutoNext() {
         if(hasMiracle) return;
         if(!fixedMarket.some(c => curRes[c.t] >= c.q)) {
-            setTimeout(() => { alert("📢 無法繼續操作，更換下一位。"); nextPlayer(); }, 600);
+            setTimeout(() => { alert("📢 無法繼續購買，更換下一位。"); nextPlayer(); }, 600);
         }
     }
 
