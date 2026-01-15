@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 人生履歷 - 公平競賽版</title>
+    <title>CV 人生履歷 - 穩定平衡版</title>
     <style>
         :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --gold: #f1c40f; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
@@ -14,25 +14,22 @@
         .secret-area { background: #f8f9fa; padding: 10px; border-radius: 10px; margin: 10px 0; border: 2px dashed #cbd5e0; }
         .secret-text { display: none; color: var(--red); font-weight: bold; font-size: 1.2rem; }
         
-        /* 骰子樣式 */
         .dice-display { display: flex; justify-content: center; gap: 6px; margin: 10px 0; min-height: 60px; }
         .dice { width: 50px; height: 50px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.7rem; box-shadow: 0 3px 0 rgba(0,0,0,0.1); }
         
-        /* 商店樣式 */
         .market { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .card { border: 2px solid #eee; padding: 12px; border-radius: 12px; text-align: center; transition: 0.3s; position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 110px; }
+        .card { border: 2px solid #eee; padding: 12px; border-radius: 12px; text-align: center; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; }
         
-        /* 亮黃框邏輯：當玩家時期符合時觸發 */
-        .card.match-highlight { border: 4px solid var(--gold); background: #fffde7; transform: scale(1.02); box-shadow: 0 0 15px rgba(241, 196, 15, 0.4); }
+        /* 適合時期的 5 分牌會亮起黃框 */
+        .card.match-highlight { border: 4px solid var(--gold); background: #fffde7; transform: scale(1.02); }
         
-        .score-tag { font-weight: bold; color: var(--red); font-size: 15px; margin-bottom: 4px; }
+        .score-tag { font-weight: bold; color: var(--red); font-size: 16px; margin-bottom: 4px; }
         .res-req { font-size: 12px; color: #666; margin: 5px 0; }
         .btn-buy { background: var(--green); color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        .btn-buy:disabled { background: #ccc; }
         
-        /* 排名與結束 */
         .rank-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
         .btn-roll { background: var(--accent); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-roll:disabled { background: #ccc; }
     </style>
 </head>
 <body>
@@ -47,10 +44,10 @@
         <div class="player-card">
             <h2 id="display-job" style="margin:0; color:var(--main);">--</h2>
             <div class="secret-area">
-                <button onmousedown="showSecret(true)" onmouseup="showSecret(false)" ontouchstart="showSecret(true)" ontouchend="showSecret(false)" style="cursor:pointer; padding:5px 12px; border-radius:5px; border:1px solid #ccc;">🔍 長按確認我的時期</button>
+                <button onmousedown="showSecret(true)" onmouseup="showSecret(false)" ontouchstart="showSecret(true)" ontouchend="showSecret(false)" style="cursor:pointer; padding:5px 12px; border-radius:5px; border:1px solid #ccc;">🔍 按住查看我的時期</button>
                 <div id="secret-info" class="secret-text">---</div>
             </div>
-            <div style="font-size: 13px;">我的天賦：<b id="display-talent" style="color:var(--accent)">--</b> (+1保底)</div>
+            <div style="font-size: 13px;">我的常駐天賦：<b id="display-talent" style="color:var(--accent)">--</b></div>
         </div>
 
         <button id="roll-btn" class="btn-roll" onclick="rollDice()">🎲 擲骰子</button>
@@ -58,10 +55,10 @@
         <div id="res-list" style="text-align:center; font-weight:bold; margin: 8px 0; color:var(--main);">資源：等待擲骰...</div>
         <div id="miracle-hint" style="text-align:center; color:var(--gold); font-size:12px; font-weight:bold; height:15px;"></div>
 
-        <h3 style="font-size: 16px; border-left: 5px solid var(--main); padding-left: 10px; margin: 15px 0 10px 0;">人生選擇 (黃框表示適合你)</h3>
+        <h3 style="font-size: 16px; border-left: 5px solid var(--main); padding-left: 10px; margin: 15px 0 10px 0;">固定人生商店</h3>
         <div class="market" id="market-container"></div>
         
-        <button onclick="switchView()" style="margin-top:20px; width:100%; padding:10px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer;">👁️ 查看目前排名</button>
+        <button onclick="switchView()" style="margin-top:20px; width:100%; padding:10px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer;">👁️ 目前排名</button>
     </div>
 
     <div id="panel-over" class="panel" style="display:none; text-align: center;">
@@ -79,29 +76,25 @@
     ];
 
     const periods = ["幼年期", "入學期", "青春期", "北漂期", "成家期", "壯年期", "危機期", "回甘期", "隱居期", "傳奇期"];
-    
-    // --- 卡牌公平性設計 ---
-    // +6分牌：每張覆蓋2個時期，共5張，確保每個時期都有一次+6機會
-    const cardsLvl6 = [
-        {n:'天才神童', t:'智慧', q:2, lv:6, tg:[periods[0], periods[1]]},
-        {n:'校隊明星', t:'健康', q:2, lv:6, tg:[periods[2], periods[3]]},
-        {n:'創業成功', t:'金錢', q:3, lv:6, tg:[periods[4], periods[5]]},
-        {n:'社會賢達', t:'人際', q:3, lv:6, tg:[periods[6], periods[7]]},
-        {n:'百歲傳奇', t:'健康', q:3, lv:6, tg:[periods[8], periods[9]]}
-    ];
 
-    // +4分牌：每張覆蓋5個時期，共2張，確保每個時期都有一次+4機會
-    const cardsLvl4 = [
-        {n:'專業證照', t:'智慧', q:2, lv:4, tg: periods.slice(0, 5)},
-        {n:'環遊世界', t:'笑臉', q:2, lv:4, tg: periods.slice(5, 10)}
-    ];
+    // 固定卡池設計
+    const fixedMarket = [
+        // --- 5分牌：2資源，符合者+5，不合者+1 ---
+        {n:'第一名', t:'智慧', q:2, lv:5, tg:[periods[0], periods[1]]},
+        {n:'校隊明星', t:'健康', q:2, lv:5, tg:[periods[2], periods[3]]},
+        {n:'購屋置產', t:'金錢', q:2, lv:5, tg:[periods[4], periods[5]]},
+        {n:'領袖地位', t:'人際', q:2, lv:5, tg:[periods[6], periods[7]]},
+        {n:'傳奇故事', t:'智慧', q:2, lv:5, tg:[periods[8], periods[9]]},
 
-    // +2分牌：通用
-    const cardsLvl2 = [
-        {n:'每日慢跑', t:'健康', q:1, lv:2, tg: []},
-        {n:'閱讀習慣', t:'智慧', q:1, lv:2, tg: []},
-        {n:'結交好友', t:'人際', q:1, lv:2, tg: []},
-        {n:'努力儲蓄', t:'金錢', q:1, lv:2, tg: []}
+        // --- 3分牌：2資源，所有人買都是+3 ---
+        {n:'證照檢定', t:'智慧', q:2, lv:3, tg:[]},
+        {n:'跨國旅遊', t:'笑臉', q:2, lv:3, tg:[]},
+        {n:'健身習慣', t:'健康', q:2, lv:3, tg:[]},
+
+        // --- 1分牌：1資源，所有人買都是+1 ---
+        {n:'日常儲蓄', t:'金錢', q:1, lv:1, tg:[]},
+        {n:'週末聚餐', t:'人際', q:1, lv:1, tg:[]},
+        {n:'維持好心情', t:'笑臉', q:1, lv:1, tg:[]}
     ];
 
     let players = [];
@@ -109,7 +102,6 @@
     let curRound = 1;
     let curRes = {};
     let hasMiracle = false;
-    let marketCards = [];
 
     function initGame() {
         let shufP = [...periods].sort(() => .5 - Math.random());
@@ -118,17 +110,7 @@
             secret: shufP[i], talent: ['金錢','智慧','人際','笑臉'][Math.floor(Math.random()*4)],
             score: 0
         }));
-        curIdx = 0; curRound = 1; refreshMarket();
-        updateUI();
-    }
-
-    function refreshMarket() {
-        // 每次重新抽牌：2張+6，2張+4，2張+2，確保商店豐富
-        marketCards = [
-            ...[...cardsLvl6].sort(()=>.5-Math.random()).slice(0,2),
-            ...[...cardsLvl4].sort(()=>.5-Math.random()).slice(0,2),
-            ...[...cardsLvl2].sort(()=>.5-Math.random()).slice(0,2)
-        ].sort(()=>.5-Math.random());
+        curIdx = 0; curRound = 1; updateUI();
     }
 
     function updateUI() {
@@ -142,16 +124,17 @@
 
     function renderMarket() {
         const p = players[curIdx];
-        document.getElementById('market-container').innerHTML = marketCards.map(c => {
+        document.getElementById('market-container').innerHTML = fixedMarket.map(c => {
             const isMatch = c.tg.includes(p.secret);
+            const scoreText = (c.lv === 5) ? (isMatch ? "+5" : "+1") : `+${c.lv}`;
             return `
                 <div class="card ${isMatch ? 'match-highlight' : ''}">
                     <div>
-                        <div class="score-tag">${isMatch ? '+'+c.lv : '+2'} 分</div>
-                        <b style="font-size:15px;">${c.n}</b>
+                        <div class="score-tag">${scoreText} 分</div>
+                        <b style="font-size:14px;">${c.n}</b>
                         <div class="res-req">需求：${c.q}個${c.t}</div>
                     </div>
-                    <button class="btn-buy" onclick="buyCard('${c.n}', '${c.t}', ${c.q}, ${c.lv}, '${c.tg.join(',')}')">購買</button>
+                    <button id="btn-${c.n}" class="btn-buy" onclick="buyCard('${c.n}', '${c.t}', ${c.q}, ${c.lv}, '${c.tg.join(',')}')">購買</button>
                 </div>
             `;
         }).join('');
@@ -178,10 +161,10 @@
             html += `<div class="dice" style="background:${r.c}">${r.i}<br>${r.n}</div>`;
         }
         document.getElementById('dice-container').innerHTML = html;
-        if(cries >= 3) { alert("💀 哭臉過多！失去行動機會。"); nextPlayer(); }
+        if(cries >= 3) { alert("💀 哭臉過多！回合結束。"); nextPlayer(); }
         else {
             hasMiracle = (smiles >= 3);
-            document.getElementById('miracle-hint').innerText = hasMiracle ? "🌟 奇蹟達成：本回合免費任選一卡！" : "";
+            document.getElementById('miracle-hint').innerText = hasMiracle ? "🌟 奇蹟達成：任選一卡免費兌換！" : "";
             document.getElementById('roll-btn').disabled = true;
             renderRes(); checkAutoNext();
         }
@@ -189,7 +172,7 @@
 
     function renderRes() {
         let txt = Object.entries(curRes).filter(([k,v])=>v>0).map(([k,v])=>`${k}x${v}`).join(' / ');
-        document.getElementById('res-list').innerText = "資源：" + (txt || "無");
+        document.getElementById('res-list').innerText = "可用資源：" + (txt || "無");
     }
 
     function buyCard(name, resType, qty, baseLv, targets) {
@@ -199,19 +182,19 @@
         if (!canBuy && curRes[resType] >= qty) { curRes[resType] -= qty; canBuy = true; }
 
         if (canBuy) {
-            let gain = tgArray.includes(p.secret) ? baseLv : 2;
+            let gain = (baseLv === 5) ? (tgArray.includes(p.secret) ? 5 : 1) : baseLv;
             p.score += gain;
             hasMiracle = false;
             document.getElementById('miracle-hint').innerText = "";
-            alert(`✅ 購買「${name}」成功！積分 +${gain}`);
+            alert(`✅ 購入「${name}」！積分 +${gain}`);
             renderRes(); checkAutoNext();
-        } else alert("❌ 資源不足！");
+        } else alert("❌ 資源不夠喔！");
     }
 
     function checkAutoNext() {
         if(hasMiracle) return;
-        if(!marketCards.some(c => curRes[c.t] >= c.q)) {
-            setTimeout(() => { alert("📢 無法繼續購買，更換下一位玩家。"); nextPlayer(); }, 600);
+        if(!fixedMarket.some(c => curRes[c.t] >= c.q)) {
+            setTimeout(() => { alert("📢 無法繼續操作，更換下一位。"); nextPlayer(); }, 600);
         }
     }
 
@@ -227,14 +210,12 @@
         document.getElementById('dice-container').innerHTML = "";
         document.getElementById('res-list').innerText = "資源：等待擲骰...";
         document.getElementById('miracle-hint').innerText = "";
-        refreshMarket(); updateUI();
-        window.scrollTo(0,0);
+        updateUI(); window.scrollTo(0,0);
     }
 
     function switchView() {
         const sorted = [...players].sort((a,b)=>b.score - a.score);
-        let list = sorted.map((p, i) => `<div class="rank-item"><span>${i+1}. ${p.job}</span><b>${p.score} 分</b></div>`).join('');
-        alert("目前排名：\n" + sorted.map((p,i)=>`${i+1}. ${p.job}: ${p.score}分`).join('\n'));
+        alert("目前排名預覽：\n" + sorted.map((p,i)=>`${i+1}. ${p.job}: ${p.score}分`).join('\n'));
     }
 
     function endGame() {
@@ -242,7 +223,7 @@
         document.getElementById('panel-over').style.display = 'block';
         const sorted = [...players].sort((a,b)=>b.score - a.score);
         document.getElementById('final-list').innerHTML = sorted.map((p, i) => `
-            <div class="rank-item" style="${i===0?'font-size:20px; color:var(--red); font-weight:bold;':''}">
+            <div class="rank-item" style="${i===0?'font-size:1.2rem; color:var(--red); font-weight:bold;':''}">
                 <span>${i+1}. ${p.job} (${p.secret})</span>
                 <b>${p.score} 分</b>
             </div>
