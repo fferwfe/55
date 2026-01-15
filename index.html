@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV 人生履歷 - 數位自動版</title>
+    <style>
+        :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; }
+        
+        /* 導覽列 */
+        .tab-nav { display: flex; gap: 8px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; background: #ddd; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
+        .tab-btn.active { background: var(--main); color: white; }
+        
+        /* 面板設計 */
+        .panel { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; }
+        .panel.active { display: block; }
+
+        /* 玩家狀態區 */
+        .player-info-card { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
+        .player-tag { background: var(--main); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; display: inline-block; margin-bottom: 5px; }
+        .secret-area { background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 10px 0; border: 2px dashed #cbd5e0; position: relative; }
+        .secret-text { display: none; color: var(--red); font-weight: bold; font-size: 1.3rem; }
+        
+        /* 骰子與資源 */
+        .dice-display { display: flex; justify-content: center; gap: 8px; margin: 15px 0; min-height: 70px; flex-wrap: wrap; }
+        .dice { width: 60px; height: 60px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8rem; box-shadow: 0 3px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
+        .res-summary { background: #fff5eb; padding: 15px; border-radius: 10px; border: 1px solid #ffd8a8; text-align: center; margin: 10px 0; }
+
+        /* 商店 */
+        .market { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card { border: 1px solid #ddd; padding: 12px; border-radius: 10px; text-align: center; background: white; }
+        .btn-buy { background: var(--green); color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; margin-top: 8px; cursor: pointer; font-weight: bold; }
+        .btn-buy:active { transform: scale(0.98); }
+
+        .btn-roll { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1.1rem; cursor: pointer; width: 100%; font-weight: bold; box-shadow: 0 4px 0 #b35d15; }
+        .btn-roll:disabled { background: #95a5a6; box-shadow: none; cursor: not-allowed; transform: translateY(4px); }
+
+        /* 列表樣式 */
+        .others-item { border-bottom: 1px solid #edf2f7; padding: 12px 0; }
+        .inventory-list { font-size: 13px; color: #4a5568; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('play')">🎮 我的回合</button>
+        <button class="tab-btn" onclick="switchTab('view')">👁️ 查看全體</button>
+        <button class="tab-btn" onclick="switchTab('admin')" style="background:#718096; color:white;">⚙️ 設定</button>
+    </div>
+
+    <div id="panel-play" class="panel active">
+        <div class="player-info-card">
+            <div class="player-tag">目前輪到：PLAYER <span id="player-num">1</span></div>
+            <h2 id="display-job" style="margin: 10px 0; color: var(--main);">載入中...</h2>
+            <div class="secret-area">
+                <button onmousedown="showSecret(true)" onmouseup="showSecret(false)" ontouchstart="showSecret(true)" ontouchend="showSecret(false)" style="padding: 8px 15px; cursor: pointer;">🔍 按住查看隱藏時期</button>
+                <div id="secret-info" class="secret-text">---</div>
+            </div>
+            <div style="font-size: 14px;">我的常駐天賦：<b id="display-talent" style="color:var(--accent)">--</b></div>
+        </div>
+
+        <button id="roll-btn" class="btn-roll" onclick="rollDice()">🎲 擲骰子 (開始行動)</button>
+        
+        <div class="dice-display" id="dice-container"></div>
+        
+        <div class="res-summary">
+            <div id="res-list" style="font-weight: bold; font-size: 15px; color: #7b341e;">等待擲骰...</div>
+            <div id="miracle-hint" style="color: #b8860b; font-weight: bold; font-size: 14px; margin-top: 5px;"></div>
+        </div>
+
+        <h3 style="font-size: 16px; border-left: 4px solid var(--main); padding-left: 10px; color: var(--main);">卡牌商店</h3>
+        <div class="market" id="market-container"></div>
+    </div>
+
+    <div id="panel-view" class="panel">
+        <h3 style="color: var(--main);">全體玩家成就清單</h3>
+        <div id="others-container"></div>
+    </div>
+
+    <div id="panel-admin" class="panel">
+        <h3 style="color: var(--red);">遊戲初始化 (GM 專用)</h3>
+        <p style="font-size: 13px; color: #666;">點擊下方按鈕將會重新分配所有玩家的時期與天賦，並從玩家 1 開始。</p>
+        <button onclick="initGame()" style="background:var(--red); color:white; padding:15px; width:100%; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">🔄 重新洗牌並開始遊戲</button>
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        <div id="gm-data-view" style="font-size:12px; line-height: 1.8; color: #4a5568;"></div>
+    </div>
+</div>
+
+<script>
+    const diceFaces = [
+        { n: '人際', c: '#e67e22', i: '🤝' }, { n: '金錢', c: '#f1c40f', i: '💰' },
+        { n: '智慧', c: '#3498db', i: '💡' }, { n: '笑臉', c: '#2ecc71', i: '😊' },
+        { n: '哭臉', c: '#e74c3c', i: '💀' }, { n: '健康', c: '#9b59b6', i: '🏥' }
+    ];
+
+    const secretPeriods = ["幼年期", "入學期", "青春期", "北漂期", "成家期", "壯年期", "危機期", "回甘期", "隱居期", "傳奇期"];
+    const publicJobs = ["偵探", "廚師", "太空人", "畫家", "醫生", "駭客", "農夫", "詩人", "導遊", "機師"];
+    const talentOptions = ['金錢', '智慧', '人際', '笑臉'];
+    const cards = [
+        {n:'股票投資', t:'金錢', q:2}, {n:'技能進修', t:'智慧', q:1}, {n:'每日慢跑', t:'健康', q:1},
+        {n:'豪華公寓', t:'金錢', q:4}, {n:'跨國交友', t:'人際', q:2}, {n:'南極探險', t:'笑臉', q:2}
+    ];
+
+    let players = [];
+    let currentIdx = 0;
+    let currentRes = {};
+    let hasMiracle = false;
+
+    // 初始化
+    function initGame() {
+        let shuffled = [...secretPeriods].sort(() => Math.random() - 0.5);
+        players = [];
+        for(let i=0; i<10; i++) {
+            players.push({ 
+                id: i, 
+                job: publicJobs[i], 
+                secret: shuffled[i], 
+                talent: talentOptions[Math.floor(Math.random() * 4)], 
+                inventory: [] 
+            });
+        }
+        renderMarket();
+        currentIdx = 0;
+        resetTurn();
+        updateUI();
+        switchTab('play');
+        alert("🎮 遊戲準備就緒！請玩家 1 接手手機。");
+    }
+
+    function renderMarket() {
+        document.getElementById('market-container').innerHTML = cards.map(c => `
+            <div class="card"><b>${c.n}</b><br><small>代價: ${c.q} ${c.t}</small>
+            <button class="btn-buy" onclick="buyCard('${c.n}','${c.t}',${c.q})">購買</button></div>
+        `).join('');
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('panel-' + tabId).classList.add('active');
+        document.querySelector(`button[onclick="switchTab('${tabId}')"]`).classList.add('active');
+        if(tabId === 'view') updateViewTab();
+    }
+
+    function resetTurn() {
+        currentRes = {};
+        hasMiracle = false;
+        document.getElementById('dice-container').innerHTML = "";
+        document.getElementById('res-list').innerText = "等待擲骰...";
+        document.getElementById('miracle-hint').innerText = "";
+        const rollBtn = document.getElementById('roll-btn');
+        rollBtn.disabled = false;
+        rollBtn.innerText = "🎲 擲骰子 (開始行動)";
+    }
+
+    function updateUI() {
+        if (players.length === 0) return;
+        const p = players[currentIdx];
+        document.getElementById('player-num').innerText = currentIdx + 1;
+        document.getElementById('display-job').innerText = p.job;
+        document.getElementById('display-talent').innerText = `保底 +1 ${p.talent}`;
+        document.getElementById('gm-data-view').innerHTML = "<b>GM 秘密查閱：</b><br>" + players.map((pl, i) => `P${i+1} ${pl.job}: ${pl.secret} (${pl.talent})`).join('<br>');
+    }
+
+    function showSecret(show) {
+        const info = document.getElementById('secret-info');
+        info.style.display = show ? 'block' : 'none';
+        info.innerText = players[currentIdx] ? players[currentIdx].secret : "尚未初始化";
+    }
+
+    function rollDice() {
+        const p = players[currentIdx];
+        let cries = 0; let smiles = 0;
+        currentRes = { '人際':0, '金錢':0, '智慧':0, '笑臉':0, '健康':0 };
+        currentRes[p.talent] = 1; // 觸發常駐天賦
+        if(p.talent === '笑臉') smiles = 1;
+
+        let html = "";
+        for(let i=0; i<4; i++) {
+            let r = diceFaces[Math.floor(Math.random()*6)];
+            if(r.n === '哭臉') cries++;
+            else { 
+                currentRes[r.n]++; 
+                if(r.n === '笑臉') smiles++; 
+            }
+            html += `<div class="dice" style="background:${r.c}">${r.i}<br>${r.n}</div>`;
+        }
+        document.getElementById('dice-container').innerHTML = html;
+
+        if(cries >= 3) {
+            alert("💀 厄運！擲出 3 個哭臉，回合直接結束。");
+            nextPlayer();
+        } else {
+            hasMiracle = (smiles >= 3);
+            document.getElementById('miracle-hint').innerText = hasMiracle ? "🌟 達成笑臉奇蹟！可免費兌換任一卡牌。" : "";
+            document.getElementById('roll-btn').disabled = true;
+            document.getElementById('roll-btn').innerText = "行動中...";
+            renderResSummary();
+            checkCanAffordAnything();
+        }
+    }
+
+    function renderResSummary() {
+        let txt = Object.entries(currentRes).filter(([k,v]) => v > 0).map(([k,v]) => `${k}x${v}`).join(' / ');
+        document.getElementById('res-list').innerText = "可用資源：" + (txt || "無");
+    }
+
+    function buyCard(name, type, qty) {
+        if(Object.keys(currentRes).length === 0 && !hasMiracle) return alert("請先擲骰子！");
+        const p = players[currentIdx];
+        let bought = false;
+
+        if(hasMiracle) {
+            if(confirm(`確定使用【奇蹟】兌換「${name}」？`)) {
+                p.inventory.push(name + "(★)");
+                hasMiracle = false;
+                document.getElementById('miracle-hint').innerText = "";
+                bought = true;
+            }
+        } else if((currentRes[type] || 0) >= qty) {
+            currentRes[type] -= qty;
+            p.inventory.push(name);
+            bought = true;
+        } else {
+            alert(`資源不足！購買「${name}」需要 ${qty} 個 ${type}。`);
+        }
+
+        if(bought) {
+            renderResSummary();
+            checkCanAffordAnything();
+        }
+    }
+
+    function checkCanAffordAnything() {
+        if(hasMiracle) return; 
+        const canAfford = cards.some(c => (currentRes[c.t] || 0) >= c.q);
+        if(!canAfford) {
+            setTimeout(() => {
+                alert("📢 資源已耗盡，即將切換至下一位玩家。");
+                nextPlayer();
+            }, 600);
+        }
+    }
+
+    function nextPlayer() {
+        currentIdx = (currentIdx + 1) % 10;
+        resetTurn();
+        updateUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateViewTab() {
+        document.getElementById('others-container').innerHTML = players.map((p, i) => `
+            <div class="others-item">
+                <span class="player-tag">P${i+1} ${p.job}</span>
+                <div class="inventory-list">成就：${p.inventory.length > 0 ? p.inventory.join(', ') : '尚未獲得'}</div>
+            </div>
+        `).join('');
+    }
+
+    // 啟動
+    initGame();
+</script>
+</body>
+</html>
