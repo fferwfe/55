@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 人生履歷 - 積分平衡版</title>
+    <title>CV 人生履歷 - 高分標記版</title>
     <style>
         :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --gold: #d4af37; --blue: #3498db; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 500px; }
-        .header-info { display: flex; justify-content: space-between; background: var(--main); color: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 14px; }
+        .header-info { display: flex; justify-content: space-between; background: var(--main); color: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; }
         .tab-nav { display: flex; gap: 8px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; background: #ddd; cursor: pointer; font-weight: bold; }
         .tab-btn.active { background: #34495e; color: white; }
@@ -17,15 +17,15 @@
         .secret-area { background: #f8f9fa; padding: 10px; border-radius: 10px; margin: 10px 0; border: 2px dashed #cbd5e0; text-align: center; }
         .secret-text { display: none; color: var(--red); font-weight: bold; font-size: 1.2rem; }
         .dice-display { display: flex; justify-content: center; gap: 5px; margin: 10px 0; min-height: 65px; flex-wrap: wrap; }
-        .dice { width: 50px; height: 50px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.7rem; box-shadow: 0 3px 0 rgba(0,0,0,0.2); }
+        .dice { width: 50px; height: 50px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.7rem; }
         .market { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card { border: 2px solid #eee; padding: 10px; border-radius: 10px; text-align: center; position: relative; min-height: 100px; display: flex; flex-direction: column; justify-content: space-between; }
-        .card.lv3 { border-color: var(--gold); background: #fffdf0; border-width: 3px; }
-        .card.lv2 { border-color: var(--blue); }
-        .score-badge { position: absolute; top: -8px; right: -8px; background: var(--red); color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; line-height: 24px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .card { border: 2px solid #eee; padding: 10px; border-radius: 10px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
+        .card.lv6 { border-color: var(--gold); background: #fffdf0; border-width: 3px; }
+        .card.lv4 { border-color: var(--blue); }
+        .score-hint { color: var(--red); font-weight: bold; font-size: 14px; margin-top: 5px; }
+        .target-hint { font-size: 11px; color: #666; background: #eee; padding: 2px 4px; border-radius: 4px; margin-top: 5px; line-height: 1.2; }
         .btn-buy { background: var(--green); color: white; border: none; width: 100%; padding: 10px; border-radius: 6px; margin-top: 8px; cursor: pointer; font-weight: bold; }
-        .others-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
-        .rank-num { background: var(--main); color: white; width: 25px; height: 25px; border-radius: 50%; display: inline-block; text-align: center; line-height: 25px; margin-right: 10px; }
+        .others-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
         .winner { background: #fff9c4; border: 2px solid var(--gold); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
     </style>
 </head>
@@ -40,25 +40,24 @@
     <div class="tab-nav" id="main-nav">
         <button class="tab-btn active" onclick="switchTab('play')">🎮 行動</button>
         <button class="tab-btn" onclick="switchTab('view')">👁️ 排名</button>
-        <button class="tab-btn" onclick="switchTab('admin')" style="background:#718096; color:white;">⚙️ GM</button>
     </div>
 
     <div id="panel-play" class="panel active">
         <div style="text-align: center;">
-            <h2 id="display-job" style="margin: 5px 0; color: var(--main);">--</h2>
+            <h2 id="display-job" style="margin: 5px 0;">--</h2>
             <div class="secret-area">
-                <button onmousedown="showSecret(true)" onmouseup="showSecret(false)" ontouchstart="showSecret(true)" ontouchend="showSecret(false)" style="cursor:pointer; padding:5px 10px;">🔍 按住查看隱藏時期</button>
+                <button onmousedown="showSecret(true)" onmouseup="showSecret(false)" ontouchstart="showSecret(true)" ontouchend="showSecret(false)">🔍 長按查看隱藏時期</button>
                 <div id="secret-info" class="secret-text">---</div>
             </div>
             <div style="font-size: 13px;">我的常駐天賦：<b id="display-talent" style="color:var(--accent)">--</b></div>
         </div>
 
-        <button id="roll-btn" class="btn-roll" onclick="rollDice()" style="background:var(--accent); color:white; border:none; padding:12px; width:100%; border-radius:8px; margin-top:10px; font-weight:bold; cursor:pointer; font-size:16px;">🎲 擲骰子 (4顆)</button>
+        <button id="roll-btn" class="btn-roll" onclick="rollDice()" style="background:var(--accent); color:white; border:none; padding:12px; width:100%; border-radius:8px; margin-top:10px; font-weight:bold; cursor:pointer;">🎲 擲骰子</button>
         <div class="dice-display" id="dice-container"></div>
-        <div id="res-list" style="text-align:center; font-size:15px; font-weight:bold; color:var(--main); margin:5px 0;">等待擲骰...</div>
-        <div id="miracle-hint" style="text-align:center; color:var(--gold); font-size:13px; font-weight:bold;"></div>
+        <div id="res-list" style="text-align:center; font-size:15px; font-weight:bold; color:var(--main); margin:5px 0;">資源: 等待中...</div>
+        <div id="miracle-hint" style="text-align:center; color:var(--gold); font-size:12px; font-weight:bold;"></div>
 
-        <h3 style="font-size: 15px; border-left: 4px solid var(--main); padding-left: 8px; margin-top: 15px;">卡牌商店</h3>
+        <h3 style="font-size: 15px; border-left: 4px solid var(--main); padding-left: 8px;">卡牌商店 (限購 3 資源以下)</h3>
         <div class="market" id="market-container"></div>
     </div>
 
@@ -70,12 +69,10 @@
     <div id="panel-over" class="panel" style="text-align: center;">
         <h1 style="color:var(--gold)">🎊 遊戲大結局 🎊</h1>
         <div id="final-rank-list"></div>
-        <button onclick="location.reload()" style="background:var(--main); color:white; padding:12px 25px; border:none; border-radius:8px; margin-top:20px; font-weight:bold;">開啟新的人生</button>
+        <button onclick="location.reload()" style="background:var(--main); color:white; padding:12px 25px; border:none; border-radius:8px; font-weight:bold;">開啟新的人生</button>
     </div>
 
-    <div id="panel-admin" class="panel">
-        <button onclick="initGame()" style="background:var(--red); color:white; padding:15px; width:100%; border:none; border-radius:8px; font-weight:bold;">🔄 重新初始化 (洗牌)</button>
-    </div>
+    <div id="panel-admin" class="panel" style="display:none;"><button onclick="initGame()">初始化</button></div>
 </div>
 
 <script>
@@ -97,38 +94,40 @@
     let currentRound = 1;
     let currentRes = {};
     let hasMiracle = false;
+    let currentMarket = [];
 
-    // 定義卡池：1分牌多，2分少，3分稀有且較難
-    const cardDatabase = {
-        lvl1: [
-            {n:'慢跑', t:'健康', q:1}, {n:'社交', t:'人際', q:1}, {n:'看書', t:'智慧', q:1},
-            {n:'存錢', t:'金錢', q:1}, {n:'大笑', t:'笑臉', q:1}, {n:'兼職', t:'金錢', q:2},
-            {n:'冥想', t:'健康', q:1}, {n:'聚餐', t:'人際', q:2}
+    // 卡片庫：嚴格限制資源需求不超過 3
+    const cardDB = {
+        lvl2: [ // 2分牌 (1資源)
+            {n:'慢跑', t:'健康', q:1}, {n:'社交', t:'人際', q:1}, {n:'看書', t:'智慧', q:1}, {n:'存錢', t:'金錢', q:1}, {n:'大笑', t:'笑臉', q:1}
         ],
-        lvl2: [
-            {n:'專業證照', t:'智慧', q:2, tg: allPeriods.slice(2, 8)},
-            {n:'馬拉松', t:'健康', q:2, tg: allPeriods.slice(0, 5)},
-            {n:'環遊世界', t:'笑臉', q:2, tg: allPeriods.slice(5, 10)},
-            {n:'社交達人', t:'人際', q:2, tg: allPeriods.slice(2, 7)}
+        lvl4: [ // 4分牌 (2資源)
+            {n:'證照考試', t:'智慧', q:2, tg: allPeriods.slice(2, 8), note: '適合: 中前期玩家'},
+            {n:'跨國旅遊', t:'笑臉', q:2, tg: allPeriods.slice(5, 10), note: '適合: 中後期玩家'},
+            {n:'社交名人', t:'人際', q:2, tg: allPeriods.slice(1, 6), note: '適合: 前中期玩家'}
         ],
-        lvl3_early: [{n:'資優生', t:'智慧', q:3, tg: p1}, {n:'校隊隊長', t:'健康', q:3, tg: p1}],
-        lvl3_mid: [{n:'購置房產', t:'金錢', q:3, tg: p2}, {n:'公司合夥', t:'智慧', q:3, tg: p2}],
-        lvl3_late: [{n:'撰寫傳記', t:'智慧', q:3, tg: p3}, {n:'養生長壽', t:'健康', q:3, tg: p3}]
+        lvl6_early: [
+            {n:'上課專心', t:'智慧', q:2, tg: p1, note: '適合: 幼/入/青 (前期)'},
+            {n:'校隊比賽', t:'健康', q:2, tg: p1, note: '適合: 幼/入/青 (前期)'}
+        ],
+        lvl6_mid: [
+            {n:'購置房產', t:'金錢', q:3, tg: p2, note: '適合: 北/成/壯/危 (中期)'},
+            {n:'職位晉升', t:'人際', q:3, tg: p2, note: '適合: 北/成/壯/危 (中期)'}
+        ],
+        lvl6_late: [
+            {n:'養生大師', t:'健康', q:3, tg: p3, note: '適合: 回/隱/傳 (後期)'},
+            {n:'寫回憶錄', t:'智慧', q:3, tg: p3, note: '適合: 回/隱/傳 (後期)'}
+        ]
     };
 
     function getMarket() {
-        // 比例：4張1分，2張2分，1張3分
         let market = [];
-        market.push(...cardDatabase.lvl1.sort(()=>.5-Math.random()).slice(0,4).map(c=>({...c, lv:1, tg:[]})));
-        market.push(...cardDatabase.lvl2.sort(()=>.5-Math.random()).slice(0,2).map(c=>({...c, lv:2})));
-        
-        let l3 = (currentRound <= 2) ? cardDatabase.lvl3_early : (currentRound <= 4 ? cardDatabase.lvl3_mid : cardDatabase.lvl3_late);
-        market.push({...l3[Math.floor(Math.random()*l3.length)], lv:3});
-        
+        market.push(...cardDB.lvl2.sort(()=>.5-Math.random()).slice(0,4).map(c=>({...c, lv:2, tg:[], note:'全時期通用'})));
+        market.push(...cardDB.lvl4.sort(()=>.5-Math.random()).slice(0,2).map(c=>({...c, lv:4})));
+        let l6 = (currentRound <= 2) ? cardDB.lvl6_early : (currentRound <= 4 ? cardDB.lvl6_mid : cardDB.lvl6_late);
+        market.push({...l6[Math.floor(Math.random()*l6.length)], lv:6});
         return market.sort(()=>.5-Math.random());
     }
-
-    let currentMarket = [];
 
     function initGame() {
         let shuffled = [...allPeriods].sort(() => Math.random() - 0.5);
@@ -158,9 +157,10 @@
     function renderMarket() {
         document.getElementById('market-container').innerHTML = currentMarket.map(c => `
             <div class="card lv${c.lv}">
-                <div class="score-badge">+${c.lv}</div>
-                <b style="font-size:15px;">${c.n}</b>
-                <small style="color:#666;">需求: ${c.q}個${c.t}</small>
+                <b style="font-size:16px;">${c.n}</b>
+                <div class="score-hint">適合 +${c.lv} / 不合 +2</div>
+                <div style="font-size:12px; color:#444;">需求: ${c.q}個${c.t}</div>
+                <div class="target-hint">${c.note}</div>
                 <button class="btn-buy" onclick="buyCard('${c.n}', '${c.t}', ${c.q}, ${c.lv}, '${(c.tg||[]).join(',')}')">購買</button>
             </div>
         `).join('');
@@ -176,7 +176,7 @@
         const p = players[currentIdx];
         let cries = 0; let smiles = 0;
         currentRes = { '人際':0, '金錢':0, '智慧':0, '笑臉':0, '健康':0 };
-        currentRes[p.talent] = 1; // 天賦保底
+        currentRes[p.talent] = 1;
         if(p.talent === '笑臉') smiles = 1;
 
         let html = "";
@@ -187,10 +187,10 @@
             html += `<div class="dice" style="background:${r.c}">${r.i}<br>${r.n}</div>`;
         }
         document.getElementById('dice-container').innerHTML = html;
-        if(cries >= 3) { alert("💀 哭臉過多！資源失效。"); nextPlayer(); }
+        if(cries >= 3) { alert("💀 厄運！直接結束"); nextPlayer(); }
         else {
             hasMiracle = (smiles >= 3);
-            document.getElementById('miracle-hint').innerText = hasMiracle ? "🌟 達成奇蹟！本回合可任選一卡。" : "";
+            document.getElementById('miracle-hint').innerText = hasMiracle ? "🌟 達成奇蹟：任選一張牌！" : "";
             document.getElementById('roll-btn').disabled = true;
             renderResSummary(); checkCanAffordAnything();
         }
@@ -208,13 +208,13 @@
         if (!canBuy && currentRes[t] >= q) { currentRes[t] -= q; canBuy = true; }
         
         if (canBuy) {
-            let gain = 1;
-            if (lv === 3 && tg.includes(p.secret)) gain = 3;
-            else if (lv === 2 && tg.includes(p.secret)) gain = 2;
+            let gain = 2; // 通用基礎分為 2 分
+            if (lv === 6 && tg.includes(p.secret)) gain = 6;
+            else if (lv === 4 && tg.includes(p.secret)) gain = 4;
             
-            p.score += gain; p.inventory.push(n);
+            p.score += gain; p.inventory.push(`${n}(+${gain})`);
             hasMiracle = false; document.getElementById('miracle-hint').innerText = "";
-            alert(`✅ 購買「${n}」成功！積分 +${gain}`);
+            alert(`✅ 購買成功！獲得 ${gain} 分`);
             renderResSummary(); checkCanAffordAnything();
         } else alert("❌ 資源不夠喔！");
     }
@@ -222,7 +222,7 @@
     function checkCanAffordAnything() {
         if(hasMiracle) return;
         if (!currentMarket.some(c => currentRes[c.t] >= c.q)) {
-            setTimeout(() => { alert("📢 沒錢買了，換下一位！"); nextPlayer(); }, 600);
+            setTimeout(() => { alert("📢 沒資源囉，換下一位！"); nextPlayer(); }, 600);
         }
     }
 
@@ -231,8 +231,8 @@
         if (currentIdx >= 10) {
             currentIdx = 0; currentRound++;
             if (currentRound > 5) return endGame();
-            currentMarket = getMarket(); // 每一輪重新更新市場
-            alert(`📢 第 ${currentRound} 回合開始！市場已翻新。`);
+            currentMarket = getMarket();
+            alert(`📢 第 ${currentRound} 回合開始！`);
         }
         resetTurn(); updateUI();
     }
@@ -240,7 +240,7 @@
     function resetTurn() {
         currentRes = {}; hasMiracle = false;
         document.getElementById('dice-container').innerHTML = "";
-        document.getElementById('res-list').innerText = "等待擲骰...";
+        document.getElementById('res-list').innerText = "資源: 等待中...";
         document.getElementById('miracle-hint').innerText = "";
         document.getElementById('roll-btn').disabled = false;
     }
@@ -249,7 +249,7 @@
         const sorted = [...players].sort((a,b) => b.score - a.score);
         document.getElementById('others-container').innerHTML = sorted.map((p, i) => `
             <div class="others-item">
-                <span><span class="rank-num">${i+1}</span> <b>${p.job}</b></span>
+                <span><b>${i+1}. ${p.job}</b></span>
                 <span style="color:var(--red); font-weight:bold;">${p.score} 分</span>
             </div>
         `).join('');
@@ -259,18 +259,13 @@
         document.getElementById('main-nav').style.display = 'none';
         document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
         document.getElementById('panel-over').style.display = 'block';
-        
         const sorted = [...players].sort((a,b) => b.score - a.score);
         document.getElementById('final-rank-list').innerHTML = `
             <div class="winner">
-                <h2 style="margin:0;">🥇 第一名：${sorted[0].job}</h2>
-                <h3 style="color:var(--red); margin:5px 0;">最終積分：${sorted[0].score} 分</h3>
+                <h2>🏆 第一名：${sorted[0].job}</h2>
+                <h3 style="color:var(--red);">總積分：${sorted[0].score} 分</h3>
             </div>
-        ` + sorted.slice(1).map((p, i) => `
-            <div style="margin:8px 0; border-bottom:1px solid #eee; padding-bottom:5px;">
-                第 ${i+2} 名：${p.job} (${p.score} 分)
-            </div>
-        `).join('');
+        ` + sorted.slice(1).map((p, i) => `<div>第 ${i+2} 名：${p.job} (${p.score} 分)</div>`).join('');
     }
 
     initGame();
