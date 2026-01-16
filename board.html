@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>CV 遊戲看板</title>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: sans-serif; padding: 20px; display: grid; grid-template-columns: 400px 1fr; gap: 20px; height: 90vh; }
+        .sidebar { background: #2d2d2d; border-radius: 15px; padding: 20px; }
+        .main { display: flex; flex-direction: column; gap: 20px; }
+        .player-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; font-size: 1.5rem; }
+        .active-turn { background: rgba(39, 174, 96, 0.3); border-radius: 8px; }
+        .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .card { background: #333; padding: 20px; border-radius: 10px; height: 100px; font-size: 1.2rem; }
+        .dice-area { background: #000; height: 150px; border-radius: 20px; display: flex; align-items: center; justify-content: center; gap: 20px; }
+        .dice { width: 80px; height: 80px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1 style="color:#f1c40f">🏆 即時排名</h1>
+        <div id="player-list"></div>
+    </div>
+    <div class="main">
+        <div class="dice-area" id="dice-display"></div>
+        <h2>🛒 市場卡片</h2>
+        <div class="card-grid" id="market-display"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", authDomain: "life-24445.firebaseapp.com", projectId: "life-24445", storageBucket: "life-24445.firebasestorage.app", messagingSenderId: "132936539069", appId: "1:132936539069:web:66224aaac8d89d3ace10d4" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const gameRef = ref(db, 'cv_game_state');
+        const resColor = { '金錢': '#f1c40f', '智慧': '#3498db', '人際': '#e67e22', '健康': '#2ecc71', '笑臉': '#e74c3c' };
+        const cardPool = [{ n: '矽谷創業' }, { n: '環球旅行' }, { n: '醫學院' }, { n: '股市達人' }, { n: '極限運動' }, { n: '藝術創作' }, { n: '併購案' }, { n: '高科技研發' }];
+
+        onValue(gameRef, (snap) => {
+            const data = snap.val(); if(!data) return;
+            const results = Object.values(data.players).filter(p=>p.active).map(p => {
+                let s = 0; for(let k in p.tags) { let c=p.tags[k]; if(c>=7) s+=(6+c-6); else if(c>=5) s+=6; else if(c>=3) s+=4; else if(c>=1) s+=2; }
+                return { name: p.name, score: s + (p.extraScore||0), id: p.id };
+            }).sort((a,b)=>b.score - a.score);
+
+            document.getElementById('player-list').innerHTML = results.map((r, i) => `
+                <div class="player-row ${r.id===data.currentTurn?'active-turn':''}"><span>#${i+1} ${r.name}</span><span>${r.score}</span></div>
+            `).join('');
+
+            document.getElementById('market-display').innerHTML = data.market.map(cid => `
+                <div class="card" style="${cid===null?'opacity:0.2':''}"><b>${cid!==null?cardPool[cid].n:'已兌換'}</b></div>
+            `).join('');
+
+            document.getElementById('dice-display').innerHTML = (data.turnAction.dice || []).map(d => `
+                <div class="dice" style="background:${resColor[d]}">${d==='笑臉'?'😊':d}</div>
+            `).join('');
+        });
+    </script>
+</body>
+</html>
