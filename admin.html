@@ -1,55 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>CV 上帝控台</title>
+    <title>CV 終極上帝主控台</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a2e; color: #fff; padding: 20px; }
+        .section { background: #16213e; border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid #0f3460; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .card { background: #0f3460; padding: 15px; border-radius: 10px; }
+        input, select { background: #1a1a2e; color: white; border: 1px solid #444; padding: 5px; border-radius: 5px; margin: 2px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-red { background: #e94560; color: white; }
+        .btn-green { background: #0f969c; color: white; }
+        .btn-blue { background: #3498db; color: white; }
+    </style>
 </head>
-<body style="font-family:sans-serif; padding:30px; background:#f4f4f4;">
-    <h1>🛠️ 上帝控制面板</h1>
-    <button onclick="initGame()" style="padding:20px; background:red; color:white; font-size:1.5rem; cursor:pointer;">🔥 初始化 / 重置遊戲</button>
-    <hr>
-    <div id="player-ctrl"></div>
+<body>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-        const config = { 
-            apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", 
-            authDomain: "life-24445.firebaseapp.com", 
-            databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app", 
-            projectId: "life-24445" 
-        };
-        const app = initializeApp(config);
-        const db = getDatabase(app);
+<h1>🛠️ CV 終極上帝主控台</h1>
 
-        window.initGame = () => {
-            if(!confirm("確定要清空嗎？")) return;
-            let ps = {};
-            for(let i=1; i<=10; i++) ps[i] = { id:i, active:false, name:"", tags:{'金錢':0}, extraScore:0 };
-            set(ref(db, 'cv_game_state'), {
-                currentRound: 1, currentTurn: 1,
-                market: [1, 2, 3, 4, 5, 6],
-                players: ps,
-                turnAction: { hasRolled: false, dice: [] }
-            }).then(()=>alert("初始化成功"));
-        };
+<div class="section">
+    <h2>📡 全域核心控制</h2>
+    <button class="btn btn-red" onclick="initGame()">🔥 重置全體遊戲數據</button>
+    <button class="btn btn-blue" onclick="forceNextTurn()">⏩ 強制跳過回合</button>
+</div>
 
-        onValue(ref(db, 'cv_game_state/players'), (s) => {
-            const ps = s.val(); if(!ps) return;
-            document.getElementById('player-ctrl').innerHTML = Object.values(ps).filter(p=>p.active).map(p=>`
-                <div style="border:1px solid #ccc; padding:15px; margin:10px; background:white;">
-                    <b>${p.name}</b> 分數: ${p.extraScore||0} 
-                    <button onclick="addS(${p.id}, 1)">+1</button>
-                    <button onclick="addS(${p.id}, -1)">-1</button>
-                </div>
-            `).join('');
-        });
+<div class="section">
+    <h2>🛒 市場卡片編輯與制定 (即時生效)</h2>
+    <div id="market-editor" class="grid"></div>
+</div>
 
-        window.addS = (id, amt) => {
-            onValue(ref(db, `cv_game_state/players/${id}/extraScore`), (s) => {
-                update(ref(db, `cv_game_state/players/${id}`), { extraScore: (s.val()||0) + amt });
-            }, { onlyOnce: true });
-        };
-    </script>
+<div class="section">
+    <h2>👥 所有玩家數據監控 & 加分</h2>
+    <div id="player-monitor" class="grid"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // 這裡使用了你提供的正確新加坡區域 URL
+    const config = { 
+        apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", 
+        authDomain: "life-24445.firebaseapp.com", 
+        databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app", 
+        projectId: "life-24445" 
+    };
+    const app = initializeApp(config);
+    const db = getDatabase(app);
+    const gRef = ref(db, 'cv_game_state');
+
+    onValue(gRef, (snap) => {
+        const state = snap.val();
+        if (!state) return;
+        renderMarket(state.marketCards);
+        renderPlayers(state.players);
+    });
+
+    // --- 初始化功能 ---
+    window.initGame = () => {
+        if(!confirm("這會清空所有卡片與玩家資料，確定？")) return;
+        let players = {};
+        for(let i=1; i<=10; i++) players[i] = { id:i, active:false, name:"", tags:{'金錢':0,'智慧':0,'人際':0,'健康':0}, extraScore:0 };
+        
+        // 初始 6 張預設卡片
+        let marketCards = [
+            { id:0, name: "預設成就A", cost: "金錢:1", gain: "智慧:1" },
+            { id:1, name: "預設成就B", cost: "智慧:1", gain: "健康:1" },
+            { id:2, name: "預設成就C", cost: "人際:1", gain: "金錢:1" },
+            { id:3, name: "預設成就D", cost: "健康:1", gain: "人際:1" },
+            { id:4, name: "預設成就E", cost: "金錢:2", gain: "智慧:2" },
+            { id:5, name: "預設成就F", cost: "智慧:2", gain: "健康:2" }
+        ];
+
+        set(gRef, {
+            currentRound: 1, currentTurn: 1,
+            marketCards: marketCards,
+            players: players,
+            turnAction: { hasRolled: false, dice: [] }
+        }).then(() => alert("初始化成功！"));
+    };
+
+    // --- 市場卡片編輯 ---
+    function renderMarket(cards) {
+        const cont = document.getElementById('market-editor');
+        cont.innerHTML = cards.map((c, idx) => `
+            <div class="card">
+                <b>位置 ${idx+1}</b><br>
+                品相: <input id="m-n-${idx}" value="${c.name}" onchange="updateCard(${idx})"><br>
+                條件: <input id="m-c-${idx}" value="${c.cost}" onchange="updateCard(${idx})"><br>
+                獎勵: <input id="m-g-${idx}" value="${c.gain}" onchange="updateCard(${idx})">
+            </div>
+        `).join('');
+    }
+
+    window.updateCard = (idx) => {
+        const name = document.getElementById(`m-n-${idx}`).value;
+        const cost = document.getElementById(`m-c-${idx}`).value;
+        const gain = document.getElementById(`m-g-${idx}`).value;
+        update(ref(db, `cv_game_state/marketCards/${idx}`), { name, cost, gain });
+    };
+
+    // --- 玩家監控與加分 ---
+    function renderPlayers(players) {
+        const cont = document.getElementById('player-monitor');
+        cont.innerHTML = Object.values(players).filter(p => p.active).map(p => `
+            <div class="card">
+                <b>${p.name} (位置 ${p.id})</b><br>
+                手動額外加分: <b>${p.extraScore || 0}</b><br>
+                <button class="btn btn-green" onclick="adjustScore(${p.id}, 1)">+1</button>
+                <button class="btn btn-red" onclick="adjustScore(${p.id}, -1)">-1</button>
+                <hr>
+                <small>目前標籤: 金錢:${p.tags.金錢}, 智慧:${p.tags.智慧}, 人際:${p.tags.人際}, 健康:${p.tags.健康}</small>
+            </div>
+        `).join('');
+    }
+
+    window.adjustScore = (id, amt) => {
+        onValue(ref(db, `cv_game_state/players/${id}/extraScore`), (s) => {
+            update(ref(db, `cv_game_state/players/${id}`), { extraScore: (s.val() || 0) + amt });
+        }, { onlyOnce: true });
+    };
+
+    window.forceNextTurn = () => {
+        onValue(gRef, (s) => {
+            let next = (s.val().currentTurn % 10) + 1;
+            update(gRef, { currentTurn: next, turnAction: {hasRolled:false, dice:[]} });
+        }, { onlyOnce: true });
+    };
+</script>
 </body>
 </html>
