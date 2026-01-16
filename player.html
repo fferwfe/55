@@ -1,84 +1,112 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 玩家操作</title>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 15px; }
-        .card { background: white; border-radius: 10px; padding: 15px; margin: 10px 0; border: 1px solid #ddd; }
-        .btn { padding: 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; margin: 5px 0; }
-        #setup { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; justify-content: center; padding: 20px; }
-    </style>
-</head>
-<body>
-    <div id="setup">
-        <h2>🧬 CV 加入遊戲</h2>
-        <input type="text" id="p-name" placeholder="輸入暱稱" style="padding:15px; margin-bottom:10px; font-size:1rem;">
-        <div id="join-btns" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
-    </div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    <div id="game-ui" style="display:none;">
-        <h3 id="turn-info">載入中...</h3>
-        <button class="btn" style="background:#e67e22; color:white;" id="rollBtn" onclick="doRoll()">🎲 擲骰子</button>
-        <div id="diceDisp" style="margin: 20px 0; font-size: 24px;"></div>
-        <div id="market-ui"></div>
-        <button class="btn" style="background:#34495e; color:white;" onclick="doEnd()">🏁 結束回合</button>
-    </div>
+    // --- Firebase 設定 ---
+    const config = { databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app" };
+    const app = initializeApp(config);
+    const db = getDatabase(app);
+    const gRef = ref(db, 'cv_game_state');
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    let myId = null;
+    let state = null;
 
-        const config = { 
-            apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", 
-            authDomain: "life-24445.firebaseapp.com", 
-            databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app", 
-            projectId: "life-24445" 
-        };
-        const app = initializeApp(config);
-        const db = getDatabase(app);
-        const gRef = ref(db, 'cv_game_state');
-        let myId, state;
+    // --- 核心邏輯：將函數強制掛載到 window，解決 ReferenceError ---
 
-        for(let i=1; i<=10; i++) {
-            let b = document.createElement('button'); b.innerText = "位置 "+i; b.className="btn"; b.style.background="#3498db"; b.style.color="white";
-            b.id = "j-"+i;
-            b.onclick = () => {
-                let n = document.getElementById('p-name').value; if(!n) return alert("請輸入名字");
-                myId = i; update(ref(db, `cv_game_state/players/${i}`), { active:true, name:n });
-                document.getElementById('setup').style.display='none'; document.getElementById('game-ui').style.display='block';
-            };
-            document.getElementById('join-btns').appendChild(b);
+    window.roll = () => {
+        if (!state) return;
+        const icons = ['💰','🧠','🤝','🏃','😊'];
+        const rolled = []; 
+        for(let i=0; i<6; i++) rolled.push(icons[Math.floor(Math.random()*5)]);
+        
+        update(ref(db, 'cv_game_state/turnAction'), { 
+            hasRolled: true, 
+            dice: rolled 
+        }).catch(err => console.error("擲骰失敗:", err));
+    };
+
+    window.buy = (idx) => {
+        if (!state || !state.marketCards) return;
+        const card = state.marketCards[idx];
+        
+        if (confirm(`確定要兌換「${card.name}」嗎？\n(請上帝確認資源是否足夠)`)) {
+            const p = state.players[myId];
+            if (!p.allTags) p.allTags = {};
+
+            // 解析獎勵並更新至雲端
+            const gains = card.gains.split(',');
+            gains.forEach(g => {
+                let [name, amtStr] = g.split('x');
+                let amt = parseInt(amtStr) || 1;
+                p.allTags[name.trim()] = (p.allTags[name.trim()] || 0) + amt;
+            });
+
+            update(ref(db, `cv_game_state/players/${myId}`), { allTags: p.allTags })
+                .then(() => alert("✅ 兌換成功！"))
+                .catch(err => alert("❌ 兌換失敗"));
         }
+    };
 
-        onValue(gRef, (s) => {
-            state = s.val(); if(!state) return;
-            for(let i=1; i<=10; i++) if(state.players[i].active) { let btn = document.getElementById("j-"+i); if(btn) btn.disabled=true; }
-            if(!myId) return;
-            let isMe = state.currentTurn == myId;
-            document.getElementById('turn-info').innerText = isMe ? "🟢 你的回合" : "⏳ 等待 P" + state.currentTurn;
-            document.getElementById('rollBtn').disabled = !isMe || state.turnAction.hasRolled;
-            document.getElementById('diceDisp').innerText = (state.turnAction.dice || []).join(' ');
-            document.getElementById('market-ui').innerHTML = (state.marketCards || []).map((c, idx) => `
-                <div class="card">
-                    <b>${c.name}</b><br><small>條件: ${c.cost}</small><br>
-                    <button class="btn" style="background:#27ae60; color:white; padding:5px;" onclick="buy(${idx})" ${!isMe?'disabled':''}>兌換</button>
-                </div>
-            `).join('');
+    window.endTurn = () => {
+        if (!state) return;
+        let next = (state.currentTurn % 10) + 1;
+        let round = state.currentRound;
+        if(next === 1) round++;
+        
+        update(gRef, { 
+            currentTurn: next, 
+            currentRound: round,
+            turnAction: { hasRolled: false, dice: [] } 
         });
+    };
 
-        window.doRoll = () => {
-            let ds = ['💰','🧠','🤝','🏃','😊'];
-            let res = []; for(let i=0; i<6; i++) res.push(ds[Math.floor(Math.random()*5)]);
-            update(ref(db, 'cv_game_state/turnAction'), { hasRolled: true, dice: res });
+    // --- 位置選擇邏輯 ---
+    const pContainer = document.getElementById('p-btns');
+    for(let i=1; i<=10; i++) {
+        let b = document.createElement('button');
+        b.className = "btn"; b.style.background = "var(--blue)"; b.innerText = "位置 " + i;
+        b.onclick = () => { 
+            myId = i; 
+            document.getElementById('setup').style.display = 'none'; 
+            document.getElementById('game-ui').style.display = 'block';
+            update(ref(db, `cv_game_state/players/${i}`), { active: true });
         };
+        pContainer.appendChild(b);
+    }
 
-        window.doEnd = () => {
-            if(!state) return;
-            let n = (state.currentTurn % 10) + 1;
-            update(gRef, { currentTurn: n, turnAction: {hasRolled:false, dice:[]} });
-        };
-    </script>
-</body>
-</html>
+    // --- 資料同步渲染 ---
+    onValue(gRef, (snap) => {
+        state = snap.val();
+        if(!state || !myId) return;
+
+        const isMyTurn = state.currentTurn == myId;
+        const turnData = state.turnAction || { hasRolled: false, dice: [] };
+
+        document.getElementById('p-id').innerText = myId + (isMyTurn ? " (你的回合)" : "");
+        document.getElementById('round-num').innerText = state.currentRound;
+        document.getElementById('job-title').innerText = state.players[myId].job;
+        
+        document.getElementById('roll-btn').disabled = !isMyTurn || turnData.hasRolled;
+        document.getElementById('end-btn').disabled = !isMyTurn || !turnData.hasRolled;
+
+        const diceHtml = (turnData.dice || []).map(d => `<div class="dice">${d}</div>`).join('');
+        document.getElementById('dice-container').innerHTML = diceHtml;
+
+        renderMarket(isMyTurn, turnData.hasRolled);
+    });
+
+    function renderMarket(isMyTurn, hasRolled) {
+        if (!state.marketCards) return;
+        document.getElementById('market-list').innerHTML = state.marketCards.map((c, i) => `
+            <div class="card">
+                <b>${c.name}</b>
+                <div style="font-size:10px; margin:5px 0;">
+                    <span style="color:var(--red)">需:${c.cost}</span><br>
+                    <span style="color:var(--green)">得:${c.gains}</span>
+                </div>
+                <button class="btn" style="background:var(--green); font-size:12px; height:30px; line-height:30px; padding:0;" 
+                    ${!isMyTurn || !hasRolled ? 'disabled' : ''} onclick="window.buy(${i})">兌換</button>
+            </div>
+        `).join('');
+    }
+</script>
