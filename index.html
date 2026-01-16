@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 人生履歷 - 動態市場版</title>
+    <title>CV 人生履歷 - 階梯線性成長版</title>
     <style>
         :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --blue: #3498db; --gold: #f1c40f; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
@@ -24,12 +24,11 @@
         .dice { width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.7rem; }
         .res-summary { text-align:center; font-weight:bold; margin-bottom: 15px; color: var(--main); background: #edf2f7; padding: 10px; border-radius: 5px; }
         .market { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card { border: 1px solid #eee; padding: 10px; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; min-height: 150px; background: #fafafa; position: relative; }
-        .cost-area { background: #ffebeb; color: #c00; font-size: 11px; padding: 3px; border-radius: 4px; margin: 2px 0; }
-        .gain-area { background: #ebffeb; color: #060; font-size: 11px; padding: 3px; border-radius: 4px; margin: 2px 0; }
+        .card { border: 1px solid #eee; padding: 10px; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; min-height: 150px; background: #fafafa; }
         .res-tag { display: inline-block; padding: 1px 3px; border-radius: 3px; margin: 1px; color: white; font-size: 9px; }
         .btn-buy { background: var(--green); color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 5px; }
-        .special-badge { position: absolute; top: -5px; right: -5px; background: var(--gold); color: black; font-size: 8px; padding: 2px 4px; border-radius: 10px; font-weight: bold; border: 1px solid black; }
+        .score-card { text-align: left; padding: 15px; border-bottom: 2px solid #eee; }
+        .score-pill { display: inline-block; background: #eee; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-right: 5px; margin-top: 3px; }
     </style>
 </head>
 <body>
@@ -48,7 +47,7 @@
     </div>
 
     <div id="panel-game" class="panel">
-        <div id="display-job" style="text-align:center; font-weight:bold; font-size:1.2rem; color:var(--main);">--</div>
+        <div id="display-job" style="text-align:center; font-weight:bold; font-size:1.2rem; color:var(--main);">載入中...</div>
         <div id="display-rule" class="rule-box" style="margin: 10px 0;">--</div>
         <div style="font-size:12px; text-align:center;">累積資產：<span id="my-tags" style="color:var(--blue); font-weight:bold;">無</span></div>
 
@@ -58,27 +57,25 @@
         </div>
 
         <div class="dice-display" id="dice-container"></div>
-        <div id="res-list" class="res-summary">等待擲骰獲取資源...</div>
+        <div id="res-list" class="res-summary">請先擲骰子獲取資源</div>
 
         <div class="market" id="market-container"></div>
     </div>
 
     <div id="panel-others" class="panel" style="display:none;">
-        <h3>各玩家累積資產</h3>
+        <h3 style="margin-top:0;">各玩家即時資產</h3>
         <div id="other-players-list-content"></div>
     </div>
 
     <div id="panel-over" class="panel" style="display:none; text-align: center;">
-        <h1 style="color:var(--gold)">🏆 成就結算</h1>
+        <h1 style="color:var(--gold)">🏆 人生成就結算</h1>
         <div id="final-list"></div>
-        <button onclick="location.reload()" class="btn btn-roll" style="width:100%; margin-top:20px;">重新開始</button>
+        <button onclick="location.reload()" class="btn btn-roll" style="width:100%; margin-top:20px;">重啟人生</button>
     </div>
 </div>
 
 <script>
     const resColor = { '金錢': '#f1c40f', '智慧': '#3498db', '人際': '#e67e22', '健康': '#9b59b6', '笑臉': '#2ecc71' };
-    
-    // 擴充卡池：總共 20 種卡片，每輪隨機抽 6 張
     const fullCardPool = [
         { n: '矽谷創業', cost: { '智慧':2, '人際':1 }, gains: { '金錢':4 } },
         { n: '環球旅行', cost: { '金錢':2 }, gains: { '人際':2, '健康':1 } },
@@ -86,31 +83,20 @@
         { n: '奧運訓練', cost: { '健康':3 }, gains: { '健康':2, '人際':1 } },
         { n: '數位行銷', cost: { '人際':2 }, gains: { '金錢':2, '智慧':1 } },
         { n: '瑜珈冥想', cost: { '智慧':1, '健康':1 }, gains: { '健康':2, '智慧':1 } },
-        { n: '股市高手', cost: { '金錢':1, '智慧':1 }, gains: { '金錢':3 } },
-        { n: '樂團主唱', cost: { '人際':1, '健康':1 }, gains: { '人際':3 } },
-        { n: '馬拉松', cost: { '健康':2 }, gains: { '健康':3 } },
-        { n: '程式競賽', cost: { '智慧':2 }, gains: { '智慧':3 } },
-        { n: '米其林主廚', cost: { '金錢':1, '智慧':2 }, gains: { '智慧':1, '健康':1, '人際':1 } },
-        { n: '外交官', cost: { '智慧':1, '人際':2 }, gains: { '人際':3, '智慧':1 } },
-        { n: '建築設計', cost: { '金錢':1, '智慧':2 }, gains: { '智慧':3 } },
-        { n: '自給自足', cost: { '健康':2 }, gains: { '健康':1, '智慧':1, '金錢':1 } },
-        { n: '志工社團', cost: { '人際':1 }, gains: { '人際':1, '智慧':1, '健康':1 } },
-        { n: '房地產', cost: { '金錢':3 }, gains: { '金錢':2, '人際':2 } },
+        { n: '股市達人', cost: { '金錢':2, '智慧':1 }, gains: { '金錢':3 } },
         { n: '極限運動', cost: { '健康':3 }, gains: { '健康':1, '智慧':2, '人際':2 } },
-        { n: '科普網紅', cost: { '智慧':2, '人際':1 }, gains: { '智慧':1, '人際':3 } },
-        { n: '深夜食堂', cost: { '金錢':1, '人際':1 }, gains: { '人際':2, '健康':1 } },
-        { n: '精品收藏', cost: { '金錢':3 }, gains: { '智慧':1, '人際':2 } }
+        { n: '跨國併購', cost: { '金錢':3, '人際':1 }, gains: { '金錢':4, '人際':1 } },
+        { n: '慈善基金', cost: { '人際':3 }, gains: { '人際':2, '智慧':2 } }
     ];
 
     const scoringRules = [
-        { desc: "💡智慧 + 💰金錢 配對 = 3分", pair: ['智慧', '金錢'] },
-        { desc: "🤝人際 + 💰金錢 配對 = 3分", pair: ['人際', '金錢'] },
-        { desc: "🏥健康 + 🤝人際 配對 = 3分", pair: ['健康', '人際'] },
-        { desc: "💡智慧 + 🏥健康 配對 = 3分", pair: ['智慧', '健康'] }
+        { name: "智慧：金錢", pair: ['智慧', '金錢'] },
+        { name: "人際：金錢", pair: ['人際', '金錢'] },
+        { name: "健康：人際", pair: ['健康', '人際'] },
+        { name: "智慧：健康", pair: ['智慧', '健康'] }
     ];
 
-    let players = [], curIdx = 0, curRound = 1, turnRes = {}, hasRolled = false;
-    let currentMarket = []; // 存儲當前輪次的卡片
+    let players = [], curIdx = 0, curRound = 1, turnRes = {}, hasRolled = false, currentMarket = [];
 
     function initGame() {
         players = Array.from({length:10}, (_, i) => ({
@@ -118,30 +104,11 @@
             allTags: { '金錢':0, '智慧':0, '人際':0, '健康':0 },
             rule: scoringRules[Math.floor(Math.random() * scoringRules.length)]
         }));
-        refreshMarket(); // 第一輪開始刷新市場
-        updateUI();
+        refreshMarket(); updateUI();
     }
 
-    // 核心功能：刷新市場品項
     function refreshMarket() {
-        const shuffled = [...fullCardPool].sort(() => 0.5 - Math.random());
-        currentMarket = shuffled.slice(0, 6);
-    }
-
-    function switchTab(tab) {
-        document.getElementById('panel-game').style.display = tab === 'game' ? 'block' : 'none';
-        document.getElementById('panel-others').style.display = tab === 'others' ? 'block' : 'none';
-        document.getElementById('tab-game').classList.toggle('active', tab === 'game');
-        document.getElementById('tab-others').classList.toggle('active', tab === 'others');
-        if(tab === 'others') renderOthers();
-    }
-
-    function renderOthers() {
-        let content = players.map(p => {
-            let tagStr = Object.entries(p.allTags).filter(([k,v])=>v>0).map(([k,v])=>`${k}x${v}`).join(', ');
-            return `<div style="padding:10px; border-bottom:1px solid #eee;"><b>玩家 ${p.id} (${p.job})</b><br><span style="color:var(--blue); font-size:12px;">${tagStr || '尚未獲得標籤'}</span></div>`;
-        }).join('');
-        document.getElementById('other-players-list-content').innerHTML = content;
+        currentMarket = [...fullCardPool].sort(() => 0.5 - Math.random()).slice(0, 6);
     }
 
     function updateUI() {
@@ -149,9 +116,9 @@
         document.getElementById('player-label').innerText = p.id;
         document.getElementById('round-num').innerText = curRound;
         document.getElementById('display-job').innerText = p.job;
-        document.getElementById('display-rule').innerText = "計分：" + p.rule.desc;
+        document.getElementById('display-rule').innerText = `目標(${p.rule.name}):3分 / 5-6個:6分 / 之後+1`;
         let tagTxt = Object.entries(p.allTags).filter(([k,v])=>v>0).map(([k,v])=>`${k}x${v}`).join(' / ');
-        document.getElementById('my-tags').innerText = tagTxt || "尚未累積資產";
+        document.getElementById('my-tags').innerText = tagTxt || "無";
         renderMarket();
     }
 
@@ -159,68 +126,53 @@
         document.getElementById('market-container').innerHTML = currentMarket.map((c, idx) => {
             let costH = Object.entries(c.cost).map(([k,v])=>`<span class="res-tag" style="background:${resColor[k]}">${k}x${v}</span>`).join('');
             let gainH = Object.entries(c.gains).map(([k,v])=>`<span class="res-tag" style="background:${resColor[k]}">${k}x${v}</span>`).join('');
-            return `<div class="card"><div class="special-badge">3😊=強換</div><b style="font-size:13px;">${c.n}</b>
-                <div class="cost-area">付：${costH}</div><div class="gain-area">得：${gainH}</div>
-                <button class="btn-buy" onclick="buyCard(${idx})" ${!hasRolled?'disabled':''}>兌換</button></div>`;
+            return `<div class="card"><b>${c.n}</b><div style="font-size:10px; background:#ffebeb; padding:2px; margin:2px 0;">付：${costH}</div><div style="font-size:10px; background:#ebffeb; padding:2px; margin:2px 0;">得：${gainH}</div>
+                <button class="btn-buy" onclick="buyCard(${idx})" ${!hasRolled?'disabled':''}>確認兌換</button></div>`;
         }).join('');
     }
 
     function rollDice() {
         turnRes = { '金錢':0, '智慧':0, '人際':0, '健康':0, '笑臉':0 };
-        let diceHtml = "";
         for(let i=0; i<6; i++) {
             let r = Object.keys(resColor)[Math.floor(Math.random()*5)];
             turnRes[r]++;
-            diceHtml += `<div class="dice" style="background:${resColor[r]}">${r === '笑臉' ? '😊' : r}</div>`;
         }
-        document.getElementById('dice-container').innerHTML = diceHtml;
-        hasRolled = true;
-        document.getElementById('roll-btn').disabled = true;
-        document.getElementById('end-btn').disabled = false;
+        hasRolled = true; document.getElementById('roll-btn').disabled = true; document.getElementById('end-btn').disabled = false;
         renderTurnRes(); renderMarket();
     }
 
     function buyCard(idx) {
         const c = currentMarket[idx], p = players[curIdx];
-        let canAffordNormal = true;
-        let tempSmile = turnRes['笑臉'];
-
+        let tempSmile = turnRes['笑臉'], canAfford = true;
         for (let [res, amt] of Object.entries(c.cost)) {
             let gap = amt - turnRes[res];
-            if (gap > 0) {
-                if (tempSmile >= gap) tempSmile -= gap;
-                else { canAffordNormal = false; break; }
-            }
+            if (gap > 0) { if (tempSmile >= gap) tempSmile -= gap; else { canAfford = false; break; } }
         }
-
-        if (canAffordNormal) {
+        if (canAfford) {
             for (let [res, amt] of Object.entries(c.cost)) {
                 let gap = amt - turnRes[res];
-                if (gap > 0) { turnRes['笑臉'] -= gap; turnRes[res] = 0; }
-                else { turnRes[res] -= amt; }
+                if (gap > 0) { turnRes['笑臉'] -= gap; turnRes[res] = 0; } else { turnRes[res] -= amt; }
             }
-            applyGains(c, p);
-        } 
-        else if (turnRes['笑臉'] >= 3) {
-            if (confirm("資源不足，是否要消耗 3 個笑臉強行兌換？")) {
-                turnRes['笑臉'] -= 3;
-                showNotify("✨ 使用笑臉神力！", "var(--gold)", "black");
-                applyGains(c, p);
+            for (let [res, amt] of Object.entries(c.gains)) { p.allTags[res] += amt; }
+            renderTurnRes(); updateUI();
+        } else if (turnRes['笑臉'] >= 3) {
+            if (confirm("消耗 3 個😊笑臉強行換取這張卡片？")) { 
+                turnRes['笑臉'] -= 3; for (let [res, amt] of Object.entries(c.gains)) { p.allTags[res] += amt; } 
+                renderTurnRes(); updateUI(); 
             }
-        } else {
-            showNotify("❌ 資源不足！", "var(--red)", "white");
-        }
+        } else { showNotify("❌ 資源不足！"); }
     }
 
-    function applyGains(c, p) {
-        for (let [res, amt] of Object.entries(c.gains)) { p.allTags[res] += amt; }
-        renderTurnRes(); updateUI();
+    function nextPlayer() {
+        curIdx++;
+        if(curIdx >= 10) { curIdx = 0; curRound++; if(curRound > 5) return endGame(); refreshMarket(); }
+        hasRolled = false; document.getElementById('roll-btn').disabled = false; document.getElementById('end-btn').disabled = true;
+        switchTab('game'); updateUI();
     }
 
-    function showNotify(msg, bg, color) {
+    function showNotify(msg) {
         const el = document.getElementById('alert-msg');
-        el.innerText = msg; el.style.background = bg; el.style.color = color; el.style.display = 'block';
-        setTimeout(() => el.style.display = 'none', 2000);
+        el.innerText = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2000);
     }
 
     function renderTurnRes() {
@@ -228,40 +180,57 @@
         document.getElementById('res-list').innerText = "可用資源：" + (txt || "已用盡");
     }
 
-    function nextPlayer() {
-        curIdx++;
-        // 當第 10 位玩家結束，輪到下一輪時，刷新市場
-        if(curIdx >= 10) { 
-            curIdx = 0; 
-            curRound++; 
-            if(curRound > 5) return endGame(); 
-            refreshMarket(); // 每一輪開始，換一批成就卡
-            showNotify(`📅 第 ${curRound} 輪：市場已更新！`, "var(--blue)", "white");
+    function switchTab(tab) {
+        document.getElementById('panel-game').style.display = tab === 'game' ? 'block' : 'none';
+        document.getElementById('panel-others').style.display = tab === 'others' ? 'block' : 'none';
+        if(tab === 'others') {
+            document.getElementById('other-players-list-content').innerHTML = players.map(p => {
+                let tags = Object.entries(p.allTags).filter(([k,v])=>v>0).map(([k,v])=>`${k}${v}`).join(', ');
+                return `<div style="padding:10px; border-bottom:1px solid #eee;"><b>玩家${p.id} (${p.job})</b><br><span style="color:var(--blue);font-size:12px;">${tags || '無資產'}</span></div>`;
+            }).join('');
         }
-        hasRolled = false; document.getElementById('roll-btn').disabled = false;
-        document.getElementById('end-btn').disabled = true;
-        document.getElementById('dice-container').innerHTML = "";
-        document.getElementById('res-list').innerText = "等待擲骰...";
-        switchTab('game'); updateUI();
+    }
+
+    // 實作您要求的計分邏輯
+    function getStepScore(count) {
+        if (count <= 0) return 0;
+        if (count <= 2) return 2;
+        if (count <= 4) return 4;
+        if (count <= 6) return 6;
+        // 7 個以上，每多一個加 1 分
+        return 6 + (count - 6); 
     }
 
     function endGame() {
         document.getElementById('panel-game').style.display = 'none';
-        document.getElementById('panel-others').style.display = 'none';
-        document.querySelector('.tabs').style.display = 'none';
         document.getElementById('panel-over').style.display = 'block';
+        document.querySelector('.tabs').style.display = 'none';
+
         let results = players.map(p => {
-            let t = {...p.allTags}, [r1, r2] = p.rule.pair;
-            let pairs = Math.min(t[r1], t[r2]);
-            let totalScore = (pairs * 3) + (Object.values(t).reduce((a,b)=>a+b, 0) - (pairs * 2));
-            return { job: p.job, score: totalScore, tags: p.allTags, rule: p.rule.desc };
-        }).sort((a,b) => b.score - a.score);
+            let t = {...p.allTags};
+            let pairCount = Math.min(t[p.rule.pair[0]], t[p.rule.pair[1]]);
+            let pairScore = pairCount * 3;
+            t[p.rule.pair[0]] -= pairCount;
+            t[p.rule.pair[1]] -= pairCount;
+            
+            let resScores = {};
+            let stepTotal = 0;
+            for(let k in t) {
+                let s = getStepScore(t[k]);
+                resScores[k] = { count: t[k], score: s };
+                stepTotal += s;
+            }
+            return { job: p.job, rule: p.rule.name, pairCount, pairScore, stepTotal, resScores, total: pairScore + stepTotal };
+        }).sort((a,b) => b.total - a.total);
 
         document.getElementById('final-list').innerHTML = results.map((r, i) => `
-            <div style="padding:12px; border-bottom:1px solid #eee; text-align:left;">
-                <b>${i+1}. ${r.job}</b> <br>
-                <small>💰${r.tags['金錢']} 💡${r.tags['智慧']} 🤝${r.tags['人際']} 🏥${r.tags['健康']}</small>
-                <div style="color:var(--red); font-weight:bold; font-size:1.2rem;">總分：${r.score}</div>
+            <div class="score-card">
+                <b>${i+1}. ${r.job}</b> <small>(${r.rule})</small>
+                <div style="font-size:11px; margin:5px 0;">
+                    ✨ 目標配對：${r.pairCount}組 → <b>${r.pairScore}分</b><br>
+                    📦 剩餘階梯：${Object.entries(r.resScores).filter(e=>e[1].count>0).map(e=>`<span class="score-pill">${e[0]}${e[1].count}→${e[1].score}分</span>`).join('')}
+                </div>
+                <div style="color:var(--red); font-weight:bold; font-size:1.3rem;">最終價值：${r.total} 分</div>
             </div>`).join('');
     }
     initGame();
