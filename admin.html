@@ -4,45 +4,51 @@
     <meta charset="UTF-8">
     <title>CV 上帝控台</title>
 </head>
-<body style="font-family:sans-serif; padding:20px;">
+<body style="font-family:sans-serif; padding:30px; background:#f4f4f4;">
     <h1>🛠️ 上帝控制面板</h1>
-    <button onclick="initGame()" style="padding:20px; background:red; color:white; font-weight:bold;">🔥 初始化 / 重置遊戲</button>
+    <button onclick="initGame()" style="padding:20px; background:red; color:white; font-size:1.5rem; cursor:pointer;">🔥 初始化 / 重置遊戲</button>
     <hr>
     <div id="player-ctrl"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-        const config = { apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", authDomain: "life-24445.firebaseapp.com", databaseURL: "https://life-24445-default-rtdb.firebaseio.com", projectId: "life-24445" };
+        const config = { 
+            apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", 
+            authDomain: "life-24445.firebaseapp.com", 
+            databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app", 
+            projectId: "life-24445" 
+        };
         const app = initializeApp(config);
         const db = getDatabase(app);
 
         window.initGame = () => {
-            if(!confirm("確定要重置所有數據嗎？")) return;
-            let players = {};
-            for(let i=1; i<=10; i++) players[i] = { id:i, active:false, name:"", tags:{'金錢':0}, extraScore:0, job:"無" };
+            if(!confirm("確定要清空嗎？")) return;
+            let ps = {};
+            for(let i=1; i<=10; i++) ps[i] = { id:i, active:false, name:"", tags:{'金錢':0}, extraScore:0 };
             set(ref(db, 'cv_game_state'), {
                 currentRound: 1, currentTurn: 1,
-                market: [0, 1, 2, 3, 4, 5],
-                players: players,
+                market: [1, 2, 3, 4, 5, 6],
+                players: ps,
                 turnAction: { hasRolled: false, dice: [] }
-            });
-            alert("遊戲已初始化！");
+            }).then(()=>alert("初始化成功"));
         };
 
         onValue(ref(db, 'cv_game_state/players'), (s) => {
             const ps = s.val(); if(!ps) return;
             document.getElementById('player-ctrl').innerHTML = Object.values(ps).filter(p=>p.active).map(p=>`
-                <div style="border:1px solid #ccc; padding:10px; margin:5px;">
+                <div style="border:1px solid #ccc; padding:15px; margin:10px; background:white;">
                     <b>${p.name}</b> 分數: ${p.extraScore||0} 
-                    <button onclick="addScore(${p.id}, 1)">+1分</button>
-                    <button onclick="addScore(${p.id}, -1)">-1分</button>
+                    <button onclick="addS(${p.id}, 1)">+1</button>
+                    <button onclick="addS(${p.id}, -1)">-1</button>
                 </div>
             `).join('');
         });
 
-        window.addScore = (id, amt) => {
-            update(ref(db, `cv_game_state/players/${id}`), { extraScore: (Math.random()*100) }); // 這裡僅為範例，實務需抓取舊值
+        window.addS = (id, amt) => {
+            onValue(ref(db, `cv_game_state/players/${id}/extraScore`), (s) => {
+                update(ref(db, `cv_game_state/players/${id}`), { extraScore: (s.val()||0) + amt });
+            }, { onlyOnce: true });
         };
     </script>
 </body>
