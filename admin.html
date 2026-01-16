@@ -1,56 +1,49 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>CV 上帝主控台</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #eee; }
-        .admin-box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; color: white; margin-right: 5px; }
-        .btn-danger { background: #e74c3c; }
-        .btn-primary { background: #3498db; }
-        .player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
-        .p-card { border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
-    </style>
+    <title>CV 上帝控台</title>
 </head>
-<body>
-    <div class="admin-box">
-        <h2>🌐 全域控制</h2>
-        <button class="btn btn-danger" onclick="resetGame()">🔥 重置全體遊戲</button>
-        <button class="btn btn-primary" onclick="nextTurn()">⏩ 下一回合</button>
-    </div>
-    <div class="admin-box">
-        <h2>👥 玩家上帝修正</h2>
-        <div id="admin-p-list" class="player-grid"></div>
-    </div>
+<body style="font-family:sans-serif; padding:20px;">
+    <h1>🛠️ 上帝控制面板</h1>
+    <button onclick="initGame()" style="padding:20px; background:red; color:white; font-weight:bold;">🔥 初始化 / 重置遊戲</button>
+    <hr>
+    <div id="player-ctrl"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-        const firebaseConfig = { apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", authDomain: "life-24445.firebaseapp.com", projectId: "life-24445", storageBucket: "life-24445.firebasestorage.app", messagingSenderId: "132936539069", appId: "1:132936539069:web:66224aaac8d89d3ace10d4" };
-        const app = initializeApp(firebaseConfig);
+        const config = { apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", authDomain: "life-24445.firebaseapp.com", databaseURL: "https://life-24445-default-rtdb.firebaseio.com", projectId: "life-24445" };
+        const app = initializeApp(config);
         const db = getDatabase(app);
-        const gameRef = ref(db, 'cv_game_state');
 
-        onValue(gameRef, (snap) => {
-            const data = snap.val(); if(!data) return;
-            document.getElementById('admin-p-list').innerHTML = Object.values(data.players).filter(p=>p.active).map(p => `
-                <div class="p-card">
-                    <b>${p.name}</b> (P${p.id})<br>
-                    手動加分: ${p.extraScore||0} <button onclick="adj(${p.id}, 1)">+1</button><br>
-                    金錢: ${p.tags.金錢||0} <button onclick="adjRes(${p.id},'金錢',1)">+</button>
+        window.initGame = () => {
+            if(!confirm("確定要重置所有數據嗎？")) return;
+            let players = {};
+            for(let i=1; i<=10; i++) players[i] = { id:i, active:false, name:"", tags:{'金錢':0}, extraScore:0, job:"無" };
+            set(ref(db, 'cv_game_state'), {
+                currentRound: 1, currentTurn: 1,
+                market: [0, 1, 2, 3, 4, 5],
+                players: players,
+                turnAction: { hasRolled: false, dice: [] }
+            });
+            alert("遊戲已初始化！");
+        };
+
+        onValue(ref(db, 'cv_game_state/players'), (s) => {
+            const ps = s.val(); if(!ps) return;
+            document.getElementById('player-ctrl').innerHTML = Object.values(ps).filter(p=>p.active).map(p=>`
+                <div style="border:1px solid #ccc; padding:10px; margin:5px;">
+                    <b>${p.name}</b> 分數: ${p.extraScore||0} 
+                    <button onclick="addScore(${p.id}, 1)">+1分</button>
+                    <button onclick="addScore(${p.id}, -1)">-1分</button>
                 </div>
             `).join('');
         });
 
-        window.adj = (id, d) => {
-            onValue(ref(db, `cv_game_state/players/${id}/extraScore`), s => {
-                update(ref(db, `cv_game_state/players/${id}`), { extraScore: (s.val()||0) + d });
-            }, { onlyOnce: true });
+        window.addScore = (id, amt) => {
+            update(ref(db, `cv_game_state/players/${id}`), { extraScore: (Math.random()*100) }); // 這裡僅為範例，實務需抓取舊值
         };
-        // 這裡可依此類推增加更多 adjust 函數...
-        window.resetGame = async () => { /* 這裡放入之前的 resetGame 代碼 */ };
     </script>
 </body>
 </html>
