@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 人生履歷 - 完美平衡版</title>
+    <title>CV 人生履歷 - 數值修正版</title>
     <style>
         :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --gold: #f1c40f; --white: #ffffff; --blue: #3498db; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
@@ -43,24 +43,24 @@
         <div class="player-card">
             <h2 id="display-job" style="margin:0; color:var(--main);">--</h2>
             <div class="secret-area">
-                <button onmousedown="showSecret(true)" onmouseup="showSecret(false)" ontouchstart="showSecret(true)" ontouchend="showSecret(false)" style="cursor:pointer; padding:6px 15px; border-radius:5px; border:1px solid #ccc; background: white;">🔍 長按查看隱藏時期</button>
+                <button onmousedown="showSecret(true)" onmouseup="showSecret(false)" ontouchstart="showSecret(true)" ontouchend="showSecret(false)" style="cursor:pointer; padding:6px 15px; border-radius:5px; border:1px solid #ccc; background: white;">🔍 按住查看隱藏時期</button>
                 <div id="secret-info" class="secret-text">---</div>
             </div>
             <div style="font-size: 14px;">天賦保底：<b id="display-talent" style="color:var(--accent)">--</b></div>
         </div>
 
-        <button id="roll-btn" class="btn-roll" onclick="rollDice()">🎲 擲骰子 (期待笑臉！)</button>
+        <button id="roll-btn" class="btn-roll" onclick="rollDice()">🎲 擲骰子</button>
         <div class="dice-display" id="dice-container"></div>
         <div class="res-summary" id="res-list">等待擲骰...</div>
 
-        <h3 style="font-size: 16px; border-left: 5px solid var(--blue); padding-left: 10px; margin: 15px 0 10px 0;">人生商店</h3>
+        <h3 style="font-size: 16px; border-left: 5px solid var(--blue); padding-left: 10px; margin: 15px 0 10px 0;">人生商店 (2資源3分區)</h3>
         <div class="market" id="market-container"></div>
     </div>
 
     <div id="panel-over" class="panel" style="display:none; text-align: center;">
         <h1 style="color:var(--gold)">🏆 人生結算</h1>
         <div id="final-list"></div>
-        <button onclick="location.reload()" style="margin-top:20px; padding:15px 30px; background:var(--main); color:white; border:none; border-radius:10px; font-weight:bold;">開啟新的一生</button>
+        <button onclick="location.reload()" style="margin-top:20px; padding:15px 30px; background:var(--main); color:white; border:none; border-radius:10px; font-weight:bold;">重新開始</button>
     </div>
 </div>
 
@@ -73,25 +73,21 @@
 
     const periods = ["幼年期", "入學期", "青春期", "北漂期", "成家期", "壯年期", "危機期", "回甘期", "隱居期", "傳奇期"];
 
-    // 商店設定：確保 2個資源換3分 邏輯生效
     const fixedMarket = [
-        // 5分區 (時期契合 5分，不合 1分)
-        {n:'第一名', t:'智慧', q:2, baseLv:5, tg:[periods[0], periods[1]]},
-        {n:'校隊明星', t:'健康', q:2, baseLv:5, tg:[periods[2], periods[3]]},
-        {n:'購屋置產', t:'金錢', q:2, baseLv:5, tg:[periods[4], periods[5]]},
-        {n:'領袖地位', t:'人際', q:2, baseLv:5, tg:[periods[6], periods[7]]},
-        {n:'傳奇故事', t:'智慧', q:2, baseLv:5, tg:[periods[8], periods[9]]},
+        {n:'第一名', t:'智慧', q:2, scoreType:'period', tg:[periods[0], periods[1]]},
+        {n:'校隊明星', t:'健康', q:2, scoreType:'period', tg:[periods[2], periods[3]]},
+        {n:'購屋置產', t:'金錢', q:2, scoreType:'period', tg:[periods[4], periods[5]]},
+        {n:'領袖地位', t:'人際', q:2, scoreType:'period', tg:[periods[6], periods[7]]},
+        {n:'傳奇故事', t:'智慧', q:2, scoreType:'period', tg:[periods[8], periods[9]]},
         
-        // 3分區 (固定 2個資源 = 3分)
-        {n:'專業證照', t:'智慧', q:2, baseLv:3, tg:[]},
-        {n:'跨國旅遊', t:'人際', q:2, baseLv:3, tg:[]},
-        {n:'健身習慣', t:'健康', q:2, baseLv:3, tg:[]},
-        {n:'創業冒險', t:'金錢', q:2, baseLv:3, tg:[]},
+        {n:'專業證照', t:'智慧', q:2, scoreType:'fixed', val:3, tg:[]},
+        {n:'跨國旅遊', t:'人際', q:2, scoreType:'fixed', val:3, tg:[]},
+        {n:'健身習慣', t:'健康', q:2, scoreType:'fixed', val:3, tg:[]},
+        {n:'創業冒險', t:'金錢', q:2, scoreType:'fixed', val:3, tg:[]},
         
-        // 1分區 (固定 1個資源 = 1分)
-        {n:'日常儲蓄', t:'金錢', q:1, baseLv:1, tg:[]},
-        {n:'週末聚餐', t:'人際', q:1, baseLv:1, tg:[]},
-        {n:'維持好心情', t:'智慧', q:1, baseLv:1, tg:[]}
+        {n:'日常儲蓄', t:'金錢', q:1, scoreType:'fixed', val:1, tg:[]},
+        {n:'週末聚餐', t:'人際', q:1, scoreType:'fixed', val:1, tg:[]},
+        {n:'維持好心情', t:'智慧', q:1, scoreType:'fixed', val:1, tg:[]}
     ];
 
     let players = [], curIdx = 0, curRound = 1, curRes = {}, lockedIndices = [], luckyDeal = null;
@@ -119,9 +115,17 @@
     function renderMarket() {
         const p = players[curIdx];
         let html = fixedMarket.map((c, idx) => {
-            const isMatch = c.tg.includes(p.secret);
+            let displayScore = 0;
+            let isMatch = false;
+
+            if (c.scoreType === 'period') {
+                isMatch = c.tg.includes(p.secret);
+                displayScore = isMatch ? 5 : 1;
+            } else {
+                displayScore = c.val;
+            }
+
             const isLocked = lockedIndices.includes(idx);
-            const displayScore = (c.baseLv === 5) ? (isMatch ? 5 : 1) : c.baseLv;
             return `
                 <div class="card ${isMatch ? 'match-highlight' : ''} ${isLocked ? 'locked' : ''}">
                     <div class="score-tag">+${displayScore}</div>
@@ -134,7 +138,7 @@
         if (luckyDeal) {
             html = `<div class="card special-deal">
                         <div class="score-tag">+3</div>
-                        <b style="font-size:13px;">✨ 笑臉特惠</b>
+                        <b style="font-size:13px;">✨ 笑臉驚喜</b>
                         <div style="font-size:11px;">只需: 1個${luckyDeal.res}</div>
                         <button class="btn-buy" onclick="buyLucky()">搶購</button>
                     </div>` + html;
@@ -151,18 +155,13 @@
         let html = "";
         for(let i=0; i<4; i++) {
             let r = diceFaces[Math.floor(Math.random()*6)];
-            if(r.n === '哭臉') {
-                cries++;
-                html += `<div class="dice" style="background:${r.c}">💀<br>哭臉</div>`;
-            } else if(r.n === '笑臉') {
+            if(r.n === '哭臉') { cries++; html += `<div class="dice" style="background:${r.c}">💀<br>哭臉</div>`; }
+            else if(r.n === '笑臉') {
                 smiles++;
                 const target = ['人際', '金錢', '智慧', '健康'][Math.floor(Math.random()*4)];
                 curRes[target]++;
                 html += `<div class="dice" style="background:${r.c}">😊<br>${target}</div>`;
-            } else {
-                curRes[r.n]++;
-                html += `<div class="dice" style="background:${r.c}">${r.i}<br>${r.n}</div>`;
-            }
+            } else { curRes[r.n]++; html += `<div class="dice" style="background:${r.c}">${r.i}<br>${r.n}</div>`; }
         }
         document.getElementById('dice-container').innerHTML = html;
 
@@ -179,11 +178,11 @@
         if (Math.random() > 0.4) {
             const res = ['人際', '金錢', '智慧', '健康'][Math.floor(Math.random()*4)];
             curRes[res] += count;
-            banner.innerText = `😊 笑臉：額外贈送了 ${count} 個「${res}」！`;
+            banner.innerText = `😊 幸運！笑臉讓你多拿了 ${count} 個「${res}」！`;
         } else {
             const res = ['人際', '金錢', '智慧', '健康'][Math.floor(Math.random()*4)];
             luckyDeal = { res: res };
-            banner.innerText = `🎁 笑臉：解鎖限時「1個${res}換3分」！`;
+            banner.innerText = `🎁 驚喜！本回合解鎖「1個${res}換3分」特惠！`;
         }
     }
 
@@ -196,24 +195,27 @@
                 curRes[lost]--;
                 if(banner.style.display === 'none') {
                     banner.className = 'event-bad'; banner.style.display = 'block';
-                    banner.innerText = `💀 意外：損失 1 個「${lost}」！`;
+                    banner.innerText = `💀 意外：你遺失了一個「${lost}」...`;
                 }
             }
         } else if (count === 2) {
             lockedIndices = [0, 1, 2, 3, 4, 5, 6].sort(() => .5 - Math.random()).slice(0, 3);
             banner.className = 'event-bad'; banner.style.display = 'block';
-            banner.innerText = `🌪️ 意外：部分卡片被鎖定！`;
-        } else if (count >= 3) {
-            alert("🚨 嚴重災難：本回合強制結束！"); nextPlayer();
-        }
+            banner.innerText = `🌪️ 意外：部分商店商品暫時封鎖！`;
+        } else if (count >= 3) { alert("🚨 災難：本回合強制結束！"); nextPlayer(); }
     }
 
     function buyCard(idx) {
         const p = players[curIdx], c = fixedMarket[idx];
         if (curRes[c.t] >= c.q) {
             curRes[c.t] -= c.q;
-            const isMatch = c.tg.includes(p.secret);
-            p.score += (c.baseLv === 5) ? (isMatch ? 5 : 1) : c.baseLv;
+            let scoreGain = 0;
+            if (c.scoreType === 'period') {
+                scoreGain = c.tg.includes(p.secret) ? 5 : 1;
+            } else {
+                scoreGain = c.val;
+            }
+            p.score += scoreGain;
             renderRes(); renderMarket(); checkCanAfford();
         } else alert("資源不足！");
     }
@@ -236,7 +238,7 @@
         const canNormal = fixedMarket.some((c, i) => !lockedIndices.includes(i) && curRes[c.t] >= c.q);
         const canSpecial = luckyDeal && curRes[luckyDeal.res] >= 1;
         if (!canNormal && !canSpecial) {
-            setTimeout(() => { alert("無可購買項，換下一位。"); nextPlayer(); }, 1200);
+            setTimeout(() => { alert("已無可操作項，下一位。"); nextPlayer(); }, 1200);
         }
     }
 
@@ -261,7 +263,7 @@
         const sorted = [...players].sort((a,b)=>b.score - a.score);
         document.getElementById('final-list').innerHTML = sorted.map((p, i) => `
             <div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-                <span><b>${i+1}. ${p.job}</b> (${p.secret})</span><b>${p.score} 分</b>
+                <span><b>${i+1}. ${p.job}</b></span><b>${p.score} 分</b>
             </div>`).join('');
     }
     initGame();
