@@ -6,26 +6,24 @@
     <title>CV 玩家操作</title>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 15px; }
-        .card { background: white; border-radius: 10px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card { background: white; border-radius: 10px; padding: 15px; margin: 10px 0; border: 1px solid #ddd; }
         .btn { padding: 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; margin: 5px 0; }
-        .btn-roll { background: #e67e22; color: white; }
-        .btn-buy { background: #27ae60; color: white; }
         #setup { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; justify-content: center; padding: 20px; }
     </style>
 </head>
 <body>
     <div id="setup">
         <h2>🧬 CV 加入遊戲</h2>
-        <input type="text" id="name" placeholder="輸入暱稱" style="padding:15px; margin-bottom:10px; font-size:1rem;">
-        <div id="p-btns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
+        <input type="text" id="p-name" placeholder="輸入暱稱" style="padding:15px; margin-bottom:10px; font-size:1rem;">
+        <div id="join-btns" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
     </div>
 
-    <div id="game" style="display:none;">
-        <h3 id="info">連線中...</h3>
-        <button class="btn btn-roll" id="rollBtn" onclick="doRoll()">🎲 擲骰子</button>
-        <div id="diceDisp" style="margin: 15px 0; font-size: 20px; font-weight:bold;"></div>
-        <div id="market"></div>
-        <button class="btn" style="background:#2c3e50; color:white;" onclick="doEnd()">🏁 結束回合</button>
+    <div id="game-ui" style="display:none;">
+        <h3 id="turn-info">載入中...</h3>
+        <button class="btn" style="background:#e67e22; color:white;" id="rollBtn" onclick="doRoll()">🎲 擲骰子</button>
+        <div id="diceDisp" style="margin: 20px 0; font-size: 24px;"></div>
+        <div id="market-ui"></div>
+        <button class="btn" style="background:#34495e; color:white;" onclick="doEnd()">🏁 結束回合</button>
     </div>
 
     <script type="module">
@@ -44,44 +42,42 @@
         let myId, state;
 
         for(let i=1; i<=10; i++) {
-            let b = document.createElement('button'); b.innerText = "P"+i; b.className="btn"; b.style.background="#3498db"; b.style.color="white";
-            b.id = "btn-join-"+i;
+            let b = document.createElement('button'); b.innerText = "位置 "+i; b.className="btn"; b.style.background="#3498db"; b.style.color="white";
+            b.id = "j-"+i;
             b.onclick = () => {
-                let n = document.getElementById('name').value; if(!n) return alert("請輸名");
-                myId = i; update(ref(db, `cv_game_state/players/${i}`), { active:true, name:n, tags:{'金錢':0,'智慧':0,'人際':0,'健康':0} });
-                document.getElementById('setup').style.display='none'; document.getElementById('game').style.display='block';
+                let n = document.getElementById('p-name').value; if(!n) return alert("請輸入名字");
+                myId = i; update(ref(db, `cv_game_state/players/${i}`), { active:true, name:n });
+                document.getElementById('setup').style.display='none'; document.getElementById('game-ui').style.display='block';
             };
-            document.getElementById('p-btns').appendChild(b);
+            document.getElementById('join-btns').appendChild(b);
         }
 
         onValue(gRef, (s) => {
             state = s.val(); if(!state) return;
-            for(let i=1; i<=10; i++) { if(state.players[i].active) { let target = document.getElementById("btn-join-"+i); if(target) target.disabled=true; } }
+            for(let i=1; i<=10; i++) if(state.players[i].active) { let btn = document.getElementById("j-"+i); if(btn) btn.disabled=true; }
             if(!myId) return;
             let isMe = state.currentTurn == myId;
-            document.getElementById('info').innerText = `第 ${state.currentRound} 輪 - ${isMe ? "🟢 你的回合" : "⏳ 等他人"}`;
+            document.getElementById('turn-info').innerText = isMe ? "🟢 你的回合" : "⏳ 等待 P" + state.currentTurn;
             document.getElementById('rollBtn').disabled = !isMe || state.turnAction.hasRolled;
-            document.getElementById('diceDisp').innerText = (state.turnAction.dice || []).join(' | ');
-            document.getElementById('market').innerHTML = state.market.map((c,idx) => `
-                <div class="card">成就項目 #${idx+1} ${c===null?'❌':''} <button class="btn btn-buy" onclick="doBuy(${idx})" ${!isMe || !state.turnAction.hasRolled || c===null?'disabled':''}>兌換</button></div>
+            document.getElementById('diceDisp').innerText = (state.turnAction.dice || []).join(' ');
+            document.getElementById('market-ui').innerHTML = (state.marketCards || []).map((c, idx) => `
+                <div class="card">
+                    <b>${c.name}</b><br><small>條件: ${c.cost}</small><br>
+                    <button class="btn" style="background:#27ae60; color:white; padding:5px;" onclick="buy(${idx})" ${!isMe?'disabled':''}>兌換</button>
+                </div>
             `).join('');
         });
 
         window.doRoll = () => {
-            if(!state) return;
             let ds = ['💰','🧠','🤝','🏃','😊'];
             let res = []; for(let i=0; i<6; i++) res.push(ds[Math.floor(Math.random()*5)]);
             update(ref(db, 'cv_game_state/turnAction'), { hasRolled: true, dice: res });
         };
-        window.doBuy = (idx) => {
-            if(!state) return;
-            let nm = [...state.market]; nm[idx] = null;
-            update(gRef, { market: nm });
-        };
+
         window.doEnd = () => {
-            if(!state || !state.currentTurn) return;
-            let nt = state.currentTurn + 1; if(nt > 10) nt = 1;
-            update(gRef, { currentTurn: nt, turnAction: {hasRolled:false, dice:[]} });
+            if(!state) return;
+            let n = (state.currentTurn % 10) + 1;
+            update(gRef, { currentTurn: n, turnAction: {hasRolled:false, dice:[]} });
         };
     </script>
 </body>
