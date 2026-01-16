@@ -2,31 +2,34 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>CV 大螢幕看板</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV 玩家操作</title>
     <style>
-        body { background: #1a1a1a; color: white; font-family: sans-serif; display: flex; height: 100vh; margin: 0; }
-        #rank { width: 350px; background: #222; padding: 20px; border-right: 2px solid #444; }
-        #main { flex-grow: 1; padding: 40px; text-align: center; }
-        .row { display: flex; justify-content: space-between; font-size: 24px; padding: 15px; border-bottom: 1px solid #333; }
-        .active { background: #27ae60; color: white; border-radius: 8px; }
-        .dice { font-size: 40px; background: #333; margin: 10px; padding: 15px; border-radius: 12px; display: inline-block; }
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 15px; }
+        .card { background: white; border-radius: 10px; padding: 15px; margin: 10px 0; border: 1px solid #ddd; }
+        .btn { padding: 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; margin: 5px 0; }
+        #setup { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; justify-content: center; padding: 20px; }
     </style>
 </head>
 <body>
-    <div id="rank">
-        <h1 style="color: #f1c40f;">🏆 排名</h1>
-        <div id="list"></div>
+    <div id="setup">
+        <h2>🧬 CV 加入遊戲</h2>
+        <input type="text" id="p-name" placeholder="輸入暱稱" style="padding:15px; margin-bottom:10px; font-size:1rem;">
+        <div id="join-btns" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
     </div>
-    <div id="main">
-        <h1 id="round">ROUND -</h1>
-        <div id="dices"></div>
-        <hr style="border:1px solid #444; margin:30px 0;">
-        <div id="market-list" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;"></div>
+
+    <div id="game-ui" style="display:none;">
+        <h3 id="turn-info">載入中...</h3>
+        <button class="btn" style="background:#e67e22; color:white;" id="rollBtn" onclick="doRoll()">🎲 擲骰子</button>
+        <div id="diceDisp" style="margin: 20px 0; font-size: 24px;"></div>
+        <div id="market-ui"></div>
+        <button class="btn" style="background:#34495e; color:white;" onclick="doEnd()">🏁 結束回合</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
         const config = { 
             apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", 
             authDomain: "life-24445.firebaseapp.com", 
@@ -35,24 +38,47 @@
         };
         const app = initializeApp(config);
         const db = getDatabase(app);
-        
-        onValue(ref(db, 'cv_game_state'), (s) => {
-            const d = s.val(); if(!d) return;
-            document.getElementById('round').innerText = "第 " + d.currentRound + " 輪";
-            const res = Object.values(d.players).filter(p=>p.active).map(p=>{
-                let s = 0; for(let k in p.tags){let c=p.tags[k]; if(c>=7)s+=(6+c-6); else if(c>=5)s+=6; else if(c>=3)s+=4; else if(c>=1)s+=2;}
-                return { name:p.name, score: s + (p.extraScore||0), id: p.id };
-            }).sort((a,b)=>b.score-a.score);
+        const gRef = ref(db, 'cv_game_state');
+        let myId, state;
 
-            document.getElementById('list').innerHTML = res.map(r=>`
-                <div class="row ${r.id==d.currentTurn?'active':''}"><span>${r.name}</span><span>${r.score}</span></div>
-            `).join('');
+        for(let i=1; i<=10; i++) {
+            let b = document.createElement('button'); b.innerText = "位置 "+i; b.className="btn"; b.style.background="#3498db"; b.style.color="white";
+            b.id = "j-"+i;
+            b.onclick = () => {
+                let n = document.getElementById('p-name').value; if(!n) return alert("請輸入名字");
+                myId = i; update(ref(db, `cv_game_state/players/${i}`), { active:true, name:n });
+                document.getElementById('setup').style.display='none'; document.getElementById('game-ui').style.display='block';
+            };
+            document.getElementById('join-btns').appendChild(b);
+        }
 
-            document.getElementById('dices').innerHTML = (d.turnAction.dice||[]).map(x=>`<div class="dice">${x}</div>`).join('');
-            document.getElementById('market-list').innerHTML = d.market.map(c=>`
-                <div style="padding:20px; background:#333; border-radius:10px; opacity:${c===null?0.2:1}">${c===null?'已兌換':'成就項目'}</div>
+        onValue(gRef, (s) => {
+            state = s.val(); if(!state) return;
+            for(let i=1; i<=10; i++) if(state.players[i].active) { let btn = document.getElementById("j-"+i); if(btn) btn.disabled=true; }
+            if(!myId) return;
+            let isMe = state.currentTurn == myId;
+            document.getElementById('turn-info').innerText = isMe ? "🟢 你的回合" : "⏳ 等待 P" + state.currentTurn;
+            document.getElementById('rollBtn').disabled = !isMe || state.turnAction.hasRolled;
+            document.getElementById('diceDisp').innerText = (state.turnAction.dice || []).join(' ');
+            document.getElementById('market-ui').innerHTML = (state.marketCards || []).map((c, idx) => `
+                <div class="card">
+                    <b>${c.name}</b><br><small>條件: ${c.cost}</small><br>
+                    <button class="btn" style="background:#27ae60; color:white; padding:5px;" onclick="buy(${idx})" ${!isMe?'disabled':''}>兌換</button>
+                </div>
             `).join('');
         });
+
+        window.doRoll = () => {
+            let ds = ['💰','🧠','🤝','🏃','😊'];
+            let res = []; for(let i=0; i<6; i++) res.push(ds[Math.floor(Math.random()*5)]);
+            update(ref(db, 'cv_game_state/turnAction'), { hasRolled: true, dice: res });
+        };
+
+        window.doEnd = () => {
+            if(!state) return;
+            let n = (state.currentTurn % 10) + 1;
+            update(gRef, { currentTurn: n, turnAction: {hasRolled:false, dice:[]} });
+        };
     </script>
 </body>
 </html>
