@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 人生履歷 - 點數精準平衡版</title>
+    <title>CV 人生履歷 - 7品項精簡版</title>
     <style>
         :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --gold: #f1c40f; --white: #ffffff; --blue: #3498db; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
@@ -17,10 +17,8 @@
         .dice { width: 55px; height: 55px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.65rem; }
         .res-summary { text-align:center; font-weight:bold; margin: 8px 0; color: var(--main); background: #edf2f7; padding: 8px; border-radius: 5px; }
         .market { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .card { border: 2px solid #eee; padding: 10px; border-radius: 12px; text-align: center; position: relative; min-height: 115px; display: flex; flex-direction: column; justify-content: space-between; }
-        .card.match-highlight { border: 3px solid var(--gold); background: #fffde7; }
-        .card.locked { opacity: 0.2; filter: grayscale(1); pointer-events: none; }
-        .card.special-deal { border: 3px solid var(--green); background: #e8f5e9; animation: pulse 2s infinite; }
+        .card { border: 2px solid #eee; padding: 10px; border-radius: 12px; text-align: center; position: relative; min-height: 110px; display: flex; flex-direction: column; justify-content: space-between; }
+        .card.special-deal { border: 3px solid var(--green); background: #e8f5e9; animation: pulse 2s infinite; grid-column: span 2; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(39, 174, 96, 0); } 100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); } }
         .score-tag { font-weight: bold; color: var(--red); font-size: 1.2rem; }
         .btn-buy { background: var(--green); color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px; }
@@ -53,14 +51,14 @@
         <div class="dice-display" id="dice-container"></div>
         <div class="res-summary" id="res-list">等待擲骰...</div>
 
-        <h3 style="font-size: 16px; border-left: 5px solid var(--blue); padding-left: 10px; margin: 15px 0 10px 0;">人生商店</h3>
+        <h3 style="font-size: 16px; border-left: 5px solid var(--blue); padding-left: 10px; margin: 15px 0 10px 0;">人生商店 (精選 7 品項)</h3>
         <div class="market" id="market-container"></div>
     </div>
 
     <div id="panel-over" class="panel" style="display:none; text-align: center;">
-        <h1 style="color:var(--gold)">🏆 人生結算</h1>
+        <h1 style="color:var(--gold)">🏆 遊戲結束</h1>
         <div id="final-list"></div>
-        <button onclick="location.reload()" style="margin-top:20px; padding:15px 30px; background:var(--main); color:white; border:none; border-radius:10px; font-weight:bold;">開啟新的一生</button>
+        <button onclick="location.reload()" style="margin-top:20px; padding:15px 30px; background:var(--main); color:white; border:none; border-radius:10px; font-weight:bold;">重新開始</button>
     </div>
 </div>
 
@@ -73,27 +71,20 @@
 
     const periods = ["幼年期", "入學期", "青春期", "北漂期", "成家期", "壯年期", "危機期", "回甘期", "隱居期", "傳奇期"];
 
+    // 嚴格精選 7 個品項
     const fixedMarket = [
-        // 5分區 (時期吻合5分，不合1分) - 需求2
-        {n:'第一名', t:'智慧', q:2, type:'PERIOD', tg:[periods[0], periods[1]]},
-        {n:'校隊明星', t:'健康', q:2, type:'PERIOD', tg:[periods[2], periods[3]]},
-        {n:'購屋置產', t:'金錢', q:2, type:'PERIOD', tg:[periods[4], periods[5]]},
-        {n:'領袖地位', t:'人際', q:2, type:'PERIOD', tg:[periods[6], periods[7]]},
-        {n:'傳奇故事', t:'智慧', q:2, type:'PERIOD', tg:[periods[8], periods[9]]},
-        
-        // 3分區 (固定：2個資源點 = 3分)
-        {n:'專業證照', t:'智慧', q:2, type:'FIXED', val:3},
-        {n:'跨國旅遊', t:'人際', q:2, type:'FIXED', val:3},
-        {n:'健身習慣', t:'健康', q:2, type:'FIXED', val:3},
-        {n:'創業冒險', t:'金錢', q:2, type:'FIXED', val:3},
-        
-        // 1分區 (固定：1個資源點 = 1分)
-        {n:'日常儲蓄', t:'金錢', q:1, type:'FIXED', val:1},
-        {n:'週末聚餐', t:'人際', q:1, type:'FIXED', val:1},
-        {n:'維持好心情', t:'智慧', q:1, type:'FIXED', val:1}
+        // 2 資源 3 分區 (4個)
+        {n:'專業證照', t:'智慧', q:2, v:3},
+        {n:'跨國旅遊', t:'人際', q:2, v:3},
+        {n:'健身習慣', t:'健康', q:2, v:3},
+        {n:'創業冒險', t:'金錢', q:2, v:3},
+        // 1 資源 1 分區 (3個)
+        {n:'日常儲蓄', t:'金錢', q:1, v:1},
+        {n:'週末聚餐', t:'人際', q:1, v:1},
+        {n:'維持好心情', t:'智慧', q:1, v:1}
     ];
 
-    let players = [], curIdx = 0, curRound = 1, curRes = {}, lockedIndices = [], luckyDeal = null;
+    let players = [], curIdx = 0, curRound = 1, curRes = {}, luckyDeal = null;
 
     function initGame() {
         let shufP = [...periods].sort(() => .5 - Math.random());
@@ -105,53 +96,37 @@
     }
 
     function updateUI() {
-        const p = players[curIdx];
         document.getElementById('round-num').innerText = curRound;
         document.getElementById('player-label').innerText = curIdx + 1;
-        document.getElementById('display-job').innerText = p.job;
-        document.getElementById('display-talent').innerText = p.talent;
+        document.getElementById('display-job').innerText = players[curIdx].job;
+        document.getElementById('display-talent').innerText = players[curIdx].talent;
         document.getElementById('event-banner').style.display = 'none';
-        lockedIndices = []; luckyDeal = null;
+        luckyDeal = null;
         renderMarket();
     }
 
     function renderMarket() {
-        const p = players[curIdx];
-        let html = fixedMarket.map((c, idx) => {
-            let scoreValue = 0;
-            let isMatch = false;
-
-            if (c.type === 'PERIOD') {
-                isMatch = c.tg.includes(p.secret);
-                scoreValue = isMatch ? 5 : 1;
-            } else {
-                scoreValue = c.val;
-            }
-
-            const isLocked = lockedIndices.includes(idx);
-            return `
-                <div class="card ${isMatch ? 'match-highlight' : ''} ${isLocked ? 'locked' : ''}">
-                    <div class="score-tag">+${scoreValue}</div>
-                    <b style="font-size:13px;">${c.n}</b>
-                    <div style="font-size:11px;">需: ${c.q} ${c.t}</div>
-                    <button class="btn-buy" onclick="buyCard(${idx})" ${isLocked ? 'disabled' : ''}>購買</button>
-                </div>`;
-        }).join('');
+        let html = fixedMarket.map((c, idx) => `
+            <div class="card">
+                <div class="score-tag">+${c.v}</div>
+                <b style="font-size:13px;">${c.n}</b>
+                <div style="font-size:11px;">需: ${c.q} ${c.t}</div>
+                <button class="btn-buy" onclick="buyCard(${idx})">購買</button>
+            </div>`).join('');
 
         if (luckyDeal) {
             html = `<div class="card special-deal">
                         <div class="score-tag">+3</div>
-                        <b style="font-size:13px;">✨ 笑臉特惠</b>
-                        <div style="font-size:11px;">需: 1 ${luckyDeal.res}</div>
-                        <button class="btn-buy" onclick="buyLucky()">搶購</button>
+                        <b style="font-size:13px;">✨ 笑臉驚喜：限時優惠</b>
+                        <div style="font-size:11px;">只需: 1 ${luckyDeal.res} (當前笑臉獎勵)</div>
+                        <button class="btn-buy" onclick="buyLucky()">搶購 1 換 3</button>
                     </div>` + html;
         }
         document.getElementById('market-container').innerHTML = html;
     }
 
     function rollDice() {
-        const p = players[curIdx];
-        let cries = 0, smiles = 0;
+        let p = players[curIdx], cries = 0, smiles = 0;
         curRes = { '人際':0, '金錢':0, '智慧':0, '健康':0 };
         curRes[p.talent] = 1;
 
@@ -167,51 +142,32 @@
             } else { curRes[r.n]++; html += `<div class="dice" style="background:${r.c}">${r.i}<br>${r.n}</div>`; }
         }
         document.getElementById('dice-container').innerHTML = html;
-        if (smiles > 0) handleLuckyEvent(smiles);
-        if (cries > 0) handleAccidentEvent(cries);
+        if (smiles > 0) handleLucky(smiles);
+        if (cries >= 3) { alert("🚨 災難：強制結束！"); nextPlayer(); return; }
         document.getElementById('roll-btn').disabled = true;
-        renderRes(); renderMarket(); checkCanAfford();
+        renderRes(); renderMarket(); checkEnd();
     }
 
-    function handleLuckyEvent(count) {
+    function handleLucky(count) {
         const banner = document.getElementById('event-banner');
         banner.className = 'event-good'; banner.style.display = 'block';
-        if (Math.random() > 0.4) {
+        if (Math.random() > 0.5) {
             const res = ['人際', '金錢', '智慧', '健康'][Math.floor(Math.random()*4)];
             curRes[res] += count;
-            banner.innerText = `😊 幸運：笑臉讓你額外獲得 ${count} 個「${res}」！`;
+            banner.innerText = `😊 笑臉：額外多拿 ${count} 個 ${res}！`;
         } else {
             const res = ['人際', '金錢', '智慧', '健康'][Math.floor(Math.random()*4)];
             luckyDeal = { res: res };
-            banner.innerText = `🎁 驚喜：笑臉開啟了「1個${res}換3分」！`;
+            banner.innerText = `🎁 笑臉：解鎖特別優惠「1 ${res} 換 3 分」！`;
         }
     }
 
-    function handleAccidentEvent(count) {
-        const banner = document.getElementById('event-banner');
-        if (count === 1) {
-            const keys = Object.keys(curRes).filter(k => curRes[k] > 0);
-            if (keys.length > 0) {
-                const lost = keys[Math.floor(Math.random() * keys.length)];
-                curRes[lost]--;
-                if(banner.style.display === 'none') {
-                    banner.className = 'event-bad'; banner.style.display = 'block';
-                    banner.innerText = `💀 意外：損失 1 個「${lost}」！`;
-                }
-            }
-        } else if (count === 2) {
-            lockedIndices = Array.from({length: fixedMarket.length}, (_, i) => i).sort(() => .5 - Math.random()).slice(0, 3);
-            banner.className = 'event-bad'; banner.style.display = 'block';
-            banner.innerText = `🌪️ 意外：環境動盪，部分選擇被封鎖！`;
-        } else if (count >= 3) { alert("🚨 災難：強制結束回合！"); nextPlayer(); }
-    }
-
     function buyCard(idx) {
-        const p = players[curIdx], c = fixedMarket[idx];
+        const c = fixedMarket[idx];
         if (curRes[c.t] >= c.q) {
             curRes[c.t] -= c.q;
-            p.score += (c.type === 'PERIOD') ? (c.tg.includes(p.secret) ? 5 : 1) : c.val;
-            renderRes(); renderMarket(); checkCanAfford();
+            players[curIdx].score += c.v;
+            renderRes(); checkEnd();
         } else alert("資源不足！");
     }
 
@@ -220,7 +176,7 @@
             curRes[luckyDeal.res]--;
             players[curIdx].score += 3;
             luckyDeal = null;
-            renderRes(); renderMarket(); checkCanAfford();
+            renderRes(); renderMarket(); checkEnd();
         }
     }
 
@@ -229,11 +185,11 @@
         document.getElementById('res-list').innerText = "可用資源：" + (txt || "無");
     }
 
-    function checkCanAfford() {
-        const canNormal = fixedMarket.some((c, i) => !lockedIndices.includes(i) && curRes[c.t] >= c.q);
-        const canSpecial = luckyDeal && curRes[luckyDeal.res] >= 1;
-        if (!canNormal && !canSpecial) {
-            setTimeout(() => { alert("無可購買項，換下一位。"); nextPlayer(); }, 1200);
+    function checkEnd() {
+        const canBuyNormal = fixedMarket.some(c => curRes[c.t] >= c.q);
+        const canBuyLucky = luckyDeal && curRes[luckyDeal.res] >= 1;
+        if (!canBuyNormal && !canBuyLucky) {
+            setTimeout(() => { alert("無可購買項，下一位。"); nextPlayer(); }, 1000);
         }
     }
 
@@ -258,7 +214,7 @@
         const sorted = [...players].sort((a,b)=>b.score - a.score);
         document.getElementById('final-list').innerHTML = sorted.map((p, i) => `
             <div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-                <span><b>${i+1}. ${p.job}</b></span><b>${p.score} 分</b>
+                <span>${i+1}. ${p.job}</span><b>${p.score} 分</b>
             </div>`).join('');
     }
     initGame();
