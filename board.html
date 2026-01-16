@@ -5,29 +5,34 @@
     <title>CV 大螢幕看板</title>
     <style>
         body { background: #1a1a1a; color: white; font-family: sans-serif; display: flex; height: 100vh; margin: 0; }
-        #rank { width: 400px; background: #222; padding: 20px; border-right: 2px solid #444; }
+        #rank { width: 350px; background: #222; padding: 20px; border-right: 2px solid #444; }
         #main { flex-grow: 1; padding: 40px; text-align: center; }
-        .row { display: flex; justify-content: space-between; font-size: 24px; padding: 10px; border-bottom: 1px solid #333; }
-        .active { color: #2ecc71; border: 2px solid #2ecc71; border-radius: 10px; }
-        .dice { font-size: 50px; background: #333; margin: 10px; padding: 20px; border-radius: 10px; display: inline-block; }
+        .row { display: flex; justify-content: space-between; font-size: 24px; padding: 15px; border-bottom: 1px solid #333; }
+        .active { background: #27ae60; color: white; border-radius: 8px; }
+        .dice { font-size: 40px; background: #333; margin: 10px; padding: 15px; border-radius: 12px; display: inline-block; }
     </style>
 </head>
 <body>
     <div id="rank">
-        <h1 style="color: #f1c40f;">🏆 即時排名</h1>
+        <h1 style="color: #f1c40f;">🏆 排名</h1>
         <div id="list"></div>
     </div>
     <div id="main">
         <h1 id="round">ROUND -</h1>
         <div id="dices"></div>
-        <hr>
-        <div id="market-list"></div>
+        <hr style="border:1px solid #444; margin:30px 0;">
+        <div id="market-list" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-        const config = { apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", authDomain: "life-24445.firebaseapp.com", databaseURL: "https://life-24445-default-rtdb.firebaseio.com", projectId: "life-24445" };
+        const config = { 
+            apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", 
+            authDomain: "life-24445.firebaseapp.com", 
+            databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app", 
+            projectId: "life-24445" 
+        };
         const app = initializeApp(config);
         const db = getDatabase(app);
         
@@ -35,8 +40,8 @@
             const d = s.val(); if(!d) return;
             document.getElementById('round').innerText = "第 " + d.currentRound + " 輪";
             const res = Object.values(d.players).filter(p=>p.active).map(p=>{
-                let score = 0; Object.values(p.tags).forEach(v=>score+=v*2); // 簡化計分顯示
-                return { name:p.name, score: score + (p.extraScore||0), id: p.id };
+                let s = 0; for(let k in p.tags){let c=p.tags[k]; if(c>=7)s+=(6+c-6); else if(c>=5)s+=6; else if(c>=3)s+=4; else if(c>=1)s+=2;}
+                return { name:p.name, score: s + (p.extraScore||0), id: p.id };
             }).sort((a,b)=>b.score-a.score);
 
             document.getElementById('list').innerHTML = res.map(r=>`
@@ -44,6 +49,9 @@
             `).join('');
 
             document.getElementById('dices').innerHTML = (d.turnAction.dice||[]).map(x=>`<div class="dice">${x}</div>`).join('');
+            document.getElementById('market-list').innerHTML = d.market.map(c=>`
+                <div style="padding:20px; background:#333; border-radius:10px; opacity:${c===null?0.2:1}">${c===null?'已兌換':'成就項目'}</div>
+            `).join('');
         });
     </script>
 </body>
