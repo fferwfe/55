@@ -1,126 +1,76 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV 遊戲 - 玩家端</title>
+    <title>CV 玩家端</title>
     <style>
-        :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --blue: #3498db; --gold: #f1c40f; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 500px; }
-        .panel { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 10px; }
-        #setup-screen { position: fixed; inset: 0; background: white; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .input-box { width: 100%; max-width: 300px; padding: 12px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 8px; text-align: center; }
-        .player-select { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; }
-        .header-info { display: flex; justify-content: space-between; background: var(--main); color: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; width: 100%; box-sizing: border-box;}
-        .dice-display { display: flex; justify-content: center; gap: 6px; margin: 10px 0; min-height: 50px; }
-        .dice { width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8rem; }
-        .market { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card { border: 1px solid #eee; padding: 12px; border-radius: 10px; background: #fafafa; display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; }
-        .card.sold-out { opacity: 0.3; }
-        .btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; width: 100%; }
-        .btn-roll { background: var(--accent); margin-bottom: 5px; }
-        .btn-end { background: var(--main); }
-        .btn-buy { background: var(--green); margin-top: 5px; font-size: 12px; }
-        .btn:disabled { background: #ccc !important; }
-        .talent-tag { background: var(--gold); color: #000; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 10px; }
+        .card { background: white; border-radius: 10px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; width: 100%; margin: 5px 0; }
+        .btn-roll { background: #e67e22; color: white; }
+        .btn-buy { background: #27ae60; color: white; }
+        #setup { position: fixed; inset: 0; background: white; z-index: 10; display: flex; flex-direction: column; justify-content: center; padding: 20px; }
     </style>
 </head>
 <body>
-    <div id="setup-screen">
-        <h2 style="color:var(--main)">🧬 CV 人生履歷</h2>
-        <input type="text" id="user-name" class="input-box" placeholder="輸入你的暱稱..." maxlength="8">
-        <div class="player-select" id="player-buttons"></div>
+    <div id="setup">
+        <h2>🧬 CV 人生履歷</h2>
+        <input type="text" id="name" placeholder="輸入暱稱" style="padding:10px; margin-bottom:10px;">
+        <div id="p-btns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;"></div>
     </div>
 
-    <div class="container" id="game-ui" style="display:none;">
-        <div class="header-info">
-            <span>📅 第 <span id="round-num">-</span> 輪</span>
-            <span>👤 <span id="my-name-display">-</span> (P<span id="my-id-display">-</span>)</span>
-        </div>
-        <div class="panel">
-            <div id="display-job" style="text-align:center; font-weight:bold; color:var(--main);"></div>
-            <div style="text-align:center; margin-bottom:10px;"><span id="my-talent" class="talent-tag"></span></div>
-            <div id="turn-indicator" style="text-align:center; font-weight:bold; margin-bottom:15px;">等待連線...</div>
-            <button id="roll-btn" class="btn btn-roll" onclick="handleRoll()">🎲 擲骰子</button>
-            <button id="end-btn" class="btn btn-end" onclick="handleEndTurn()">🏁 結束回合</button>
-            <div class="dice-display" id="dice-container"></div>
-            <div id="res-list" style="text-align:center; font-size:14px; background:#eee; padding:5px; border-radius:5px;"></div>
-        </div>
-        <div class="market" id="market-container"></div>
+    <div id="game" style="display:none;">
+        <h3 id="info">載入中...</h3>
+        <button class="btn btn-roll" id="rollBtn" onclick="doRoll()">🎲 擲骰子</button>
+        <div id="diceDisp" style="margin: 10px 0; font-size: 20px;"></div>
+        <div id="market"></div>
+        <button class="btn" style="background:#2c3e50; color:white;" onclick="doEnd()">🏁 結束回合</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        const firebaseConfig = { apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", authDomain: "life-24445.firebaseapp.com", projectId: "life-24445", storageBucket: "life-24445.firebasestorage.app", messagingSenderId: "132936539069", appId: "1:132936539069:web:66224aaac8d89d3ace10d4" };
-        const app = initializeApp(firebaseConfig);
+        const config = { apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", authDomain: "life-24445.firebaseapp.com", databaseURL: "https://life-24445-default-rtdb.firebaseio.com", projectId: "life-24445" };
+        const app = initializeApp(config);
         const db = getDatabase(app);
-        const gameRef = ref(db, 'cv_game_state');
-
-        let myId = null, gameState = {};
-        const resColor = { '金錢': '#f1c40f', '智慧': '#3498db', '人際': '#e67e22', '健康': '#9b59b6', '笑臉': '#2ecc71' };
-        const cardPool = [{ n: '矽谷創業', cost: { '智慧':2, '人際':1 }, gains: { '金錢':4 } }, { n: '環球旅行', cost: { '金錢':2 }, gains: { '人際':2, '健康':1 } }, { n: '醫學院', cost: { '智慧':3 }, gains: { '智慧':2, '健康':2 } }, { n: '股市達人', cost: { '金錢':2, '智慧':1 }, gains: { '金錢':3 } }, { n: '極限運動', cost: { '健康':3 }, gains: { '健康':1, '人際':2 } }, { n: '藝術創作', cost: { '智慧':1, '人際':1 }, gains: { '智慧':2, '健康':1 } }, { n: '併購案', cost: { '金錢':3, '智慧':1 }, gains: { '金錢':5 } }, { n: '高科技研發', cost: { '智慧':3, '金錢':1 }, gains: { '智慧':4 } }];
-        const talents = [{ n: "理財大師", effect: { '金錢': 1 } }, { n: "學者氣息", effect: { '智慧': 1 } }, { n: "社交達人", effect: { '人際': 1 } }, { n: "運動健將", effect: { '健康': 1 } }, { n: "幸運星", effect: {} }];
+        const gRef = ref(db, 'cv_game_state');
+        let myId, state;
 
         for(let i=1; i<=10; i++) {
-            const b = document.createElement('button'); b.className="btn"; b.style.background="var(--blue)"; b.innerText=`位置 ${i}`;
-            b.id=`btn-p${i}`; b.onclick=()=>join(i); document.getElementById('player-buttons').appendChild(b);
+            let b = document.createElement('button'); b.innerText = "位置 "+i; b.className="btn"; b.style.background="#3498db"; b.style.color="white";
+            b.onclick = () => {
+                let n = document.getElementById('name').value; if(!n) return alert("請輸名");
+                myId = i; update(ref(db, `cv_game_state/players/${i}`), { active:true, name:n, tags:{'金錢':0} });
+                document.getElementById('setup').style.display='none'; document.getElementById('game').style.display='block';
+            };
+            document.getElementById('p-btns').appendChild(b);
         }
 
-        onValue(gameRef, (snap) => {
-            gameState = snap.val(); if(!gameState) return;
-            for(let i=1; i<=10; i++) { if(gameState.players[i].active) { document.getElementById(`btn-p${i}`).style.background="#ccc"; document.getElementById(`btn-p${i}`).disabled=true; } }
-            if(myId) render();
+        onValue(gRef, (s) => {
+            state = s.val(); if(!state) return;
+            let isMe = state.currentTurn == myId;
+            document.getElementById('info').innerText = `第 ${state.currentRound} 輪 - ${isMe ? "🔴 你的回合" : "等待中..."}`;
+            document.getElementById('rollBtn').disabled = !isMe || state.turnAction.hasRolled;
+            document.getElementById('diceDisp').innerText = (state.turnAction.dice || []).join(' ');
+            document.getElementById('market').innerHTML = state.market.map((c,idx) => `
+                <div class="card">成就 ${c===null?'已售出':c} <button class="btn btn-buy" onclick="doBuy(${idx})" ${!isMe || !state.turnAction.hasRolled?'disabled':''}>兌換</button></div>
+            `).join('');
         });
 
-        window.join = (id) => {
-            const name = document.getElementById('user-name').value.trim(); if(!name) return alert("請輸入名字");
-            myId = id; const t = talents[Math.floor(Math.random()*talents.length)];
-            update(ref(db, `cv_game_state/players/${id}`), { active: true, name: name, talent: t.n, tags: t.effect || { '金錢':0 } });
-            document.getElementById('setup-screen').style.display='none'; document.getElementById('game-ui').style.display='block';
-            document.getElementById('my-id-display').innerText=id; document.getElementById('my-name-display').innerText=name;
+        window.doRoll = () => {
+            let ds = ['金錢','智慧','人際','健康','笑臉'];
+            let res = []; for(let i=0; i<6; i++) res.push(ds[Math.floor(Math.random()*5)]);
+            update(ref(db, 'cv_game_state/turnAction'), { hasRolled: true, dice: res });
         };
-
-        function render() {
-            const isTurn = gameState.currentTurn === myId; const p = gameState.players[myId];
-            document.getElementById('round-num').innerText = gameState.currentRound;
-            document.getElementById('display-job').innerText = `職業：${p.job}`;
-            document.getElementById('my-talent').innerText = `天賦：${p.talent}`;
-            document.getElementById('turn-indicator').innerText = isTurn ? "🟢 到你了！" : `等待玩家 ${gameState.players[gameState.currentTurn].name || gameState.currentTurn}...`;
-            document.getElementById('roll-btn').disabled = !isTurn || gameState.turnAction.hasRolled;
-            document.getElementById('end-btn').disabled = !isTurn || !gameState.turnAction.hasRolled;
-            document.getElementById('market-container').innerHTML = gameState.market.map((cid, idx) => {
-                if(cid === null) return `<div class="card sold-out">已兌換</div>`;
-                const c = cardPool[cid];
-                return `<div class="card"><b>${c.n}</b><button class="btn btn-buy" onclick="buy(${idx})" ${!isTurn || !gameState.turnAction.hasRolled?'disabled':''}>兌換</button></div>`;
-            }).join('');
-            document.getElementById('dice-container').innerHTML = (gameState.turnAction.dice || []).map(d=>`<div class="dice" style="background:${resColor[d]}">${d==='笑臉'?'😊':d}</div>`).join('');
-        }
-
-        window.handleRoll = () => {
-            const dice = []; const res = { '金錢':0, '智慧':0, '人際':0, '健康':0, '笑臉':0 };
-            for(let i=0; i<6; i++) { let r = Object.keys(resColor)[Math.floor(Math.random()*5)]; dice.push(r); res[r]++; }
-            update(ref(db, 'cv_game_state/turnAction'), { hasRolled: true, dice, res });
+        window.doBuy = (idx) => {
+            let nm = [...state.market]; nm[idx] = null;
+            update(gRef, { market: nm });
         };
-
-        window.buy = (idx) => {
-            const card = cardPool[gameState.market[idx]], p = gameState.players[myId], currentRes = gameState.turnAction.res;
-            let can = true; for(let [k,v] of Object.entries(card.cost)) { if((currentRes[k]||0)<v) can=false; }
-            if(can) {
-                const newTags = {...p.tags}; for(let [k,v] of Object.entries(card.gains)) newTags[k]=(newTags[k]||0)+v;
-                const newM = [...gameState.market]; newM[idx]=null;
-                update(ref(db, `cv_game_state/players/${myId}`), { tags: newTags });
-                update(gameRef, { market: newM });
-            } else alert("資源不足");
-        };
-
-        window.handleEndTurn = () => {
-            let nt = gameState.currentTurn + 1, nr = gameState.currentRound;
-            if(nt > 10) { nt=1; nr++; update(gameRef, { market: [0,1,2,3,4,5].map(()=>Math.floor(Math.random()*cardPool.length)) }); }
-            if(nr > 5) update(gameRef, { isOver: true });
-            else update(gameRef, { currentTurn: nt, currentRound: nr, turnAction: { hasRolled: false, dice: [], res: {} } });
+        window.doEnd = () => {
+            let nt = state.currentTurn + 1; if(nt > 10) nt = 1;
+            update(gRef, { currentTurn: nt, turnAction: {hasRolled:false, dice:[]} });
         };
     </script>
 </body>
