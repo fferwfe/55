@@ -7,88 +7,106 @@
     const db = getDatabase(app);
     const gRef = ref(db, 'cv_game_state');
 
-    let myId = null;
-    let state = null;
-    let localHasRolled = false; // 改為本地控制，不影響別人
+    let myId = null, state = null;
+    let myCurrentDice = []; // 存儲目前擲出的骰子
+    let localHasRolled = false;
 
-    // 選擇位置
+    // 資源對照表 (中英轉換)
+    const iconToName = { '💰': '金錢', '🧠': '智慧', '🤝': '人際', '跑': '健康', '🏃': '健康', '😊': '笑臉' };
+
+    // 1. 初始化位置選擇 (省略重複代碼，同前版...)
     const pContainer = document.getElementById('p-btns');
     for(let i=1; i<=10; i++) {
-        let b = document.createElement('button');
-        b.className = "btn"; b.style.background = "var(--blue)"; b.innerText = "位置 " + i;
-        b.onclick = () => { 
-            myId = i; 
-            document.getElementById('setup').style.display = 'none'; 
-            document.getElementById('game-ui').style.display = 'block';
-            update(ref(db, `cv_game_state/players/${i}`), { active: true });
-        };
+        let b = document.createElement('button'); b.className = "btn"; b.style.background = "var(--blue)"; b.innerText = "位置 " + i;
+        b.onclick = () => { myId = i; document.getElementById('setup').style.display = 'none'; document.getElementById('game-ui').style.display = 'block'; update(ref(db, `cv_game_state/players/${i}`), { active: true }); };
         pContainer.appendChild(b);
     }
 
     onValue(gRef, (snap) => {
         state = snap.val();
         if(!state || !myId) return;
-
-        const p = state.players[myId];
         document.getElementById('p-id').innerText = myId;
         document.getElementById('round-num').innerText = state.currentRound;
-        document.getElementById('job-title').innerText = p.job;
-        
-        // 自由模式：只看自己是否擲過骰子
+        document.getElementById('job-title').innerText = state.players[myId].job;
         document.getElementById('roll-btn').disabled = localHasRolled;
         document.getElementById('end-btn').disabled = !localHasRolled;
-        
-        document.getElementById('res-summary').innerText = localHasRolled ? "✨ 兌換卡片或重置行動" : "👉 點擊開始擲骰";
-
-        renderMarket(true, localHasRolled);
+        renderMarket(localHasRolled);
     });
 
+    // 🎲 擲骰子並計算當前資源
     window.handleRoll = () => {
         const icons = ['💰','🧠','🤝','🏃','😊'];
-        const res = []; 
-        for(let i=0; i<6; i++) res.push(icons[Math.floor(Math.random()*5)]);
+        myCurrentDice = []; 
+        for(let i=0; i<6; i++) myCurrentDice.push(icons[Math.floor(Math.random()*5)]);
         
-        // 顯示在畫面上
-        const diceHtml = res.map(d => `<div class="dice">${d}</div>`).join('');
+        const diceHtml = myCurrentDice.map(d => `<div class="dice">${d}</div>`).join('');
         document.getElementById('dice-container').innerHTML = diceHtml;
+        
         localHasRolled = true;
-        renderMarket(true, true);
+        renderMarket(true);
     };
 
+    // 🛒 兌換邏輯：自動計算資源是否足夠
     window.handleBuy = (idx) => {
         const card = state.marketCards[idx];
-        if(!confirm(`確定要兌換「${card.name}」嗎？`)) return;
+        
+        // --- 核心：資源計算 ---
+        const diceCounts = {}; // 統計手中骰子
+        myCurrentDice.forEach(d => {
+            const name = iconToName[d];
+            diceCounts[name] = (diceCounts[name] || 0) + 1;
+        });
+
+        const smileCount = diceCounts['笑臉'] || 0; // 笑臉萬能資源
+        let neededSmiles = 0;
+        let canAfford = true;
+        let missingList = [];
+
+        // 解析成本，例如 "智慧x2,金錢x1"
+        const costItems = card.cost.split(',');
+        costItems.forEach(item => {
+            let [name, amtStr] = item.trim().split('x');
+            let amt = parseInt(amtStr) || 1;
+            let currentOwned = diceCounts[name] || 0;
+            
+            if (currentOwned < amt) {
+                neededSmiles += (amt - currentOwned);
+                missingList.push(`${name}缺${amt - currentOwned}`);
+            }
+        });
+
+        // 判斷笑臉是否足以填補空缺
+        if (smileCount < neededSmiles) {
+            alert(`❌ 資源不足！\n持有：${JSON.stringify(diceCounts)}\n${missingList.join('\n')}\n(需要 ${neededSmiles} 個笑臉，你只有 ${smileCount} 個)`);
+            return;
+        }
+
+        // --- 資源足夠，執行兌換 ---
+        if(!confirm(`✅ 資源確認通過 (耗費 ${neededSmiles} 個笑臉當萬能資源)\n確定兌換「${card.name}」？`)) return;
 
         const p = state.players[myId];
         if(!p.allTags) p.allTags = {};
+        const gains = card.gains.split(',');
+        gains.forEach(g => {
+            let [name, amtStr] = g.trim().split('x');
+            p.allTags[name] = (p.allTags[name] || 0) + (parseInt(amtStr) || 1);
+        });
 
-        try {
-            const gains = card.gains.split(',');
-            gains.forEach(g => {
-                let [name, amtStr] = g.split('x');
-                let amt = parseInt(amtStr) || 1;
-                p.allTags[name.trim()] = (p.allTags[name.trim()] || 0) + amt;
-            });
-
-            update(ref(db, `cv_game_state/players/${myId}`), { allTags: p.allTags })
-                .then(() => alert("✅ 兌換成功！標籤已更新"));
-        } catch (e) {
-            alert("卡片格式錯誤");
-        }
+        update(ref(db, `cv_game_state/players/${myId}`), { allTags: p.allTags }).then(() => {
+            alert("🎉 兌換成功！已加入你的履歷。");
+            window.handleEndTurn(); // 兌換完自動重置骰子
+        });
     };
 
     window.handleEndTurn = () => {
-        // 自由模式：結束回合等於「重置自己的擲骰狀態」
         localHasRolled = false;
+        myCurrentDice = [];
         document.getElementById('dice-container').innerHTML = "";
-        alert("準備好進行下一次行動了！");
-        // 如果想要全局跳轉輪次，可以在這裡加入 update(gRef, { currentRound: ... })
     };
 
-    function renderMarket(isMyTurn, hasRolled) {
+    function renderMarket(hasRolled) {
         if(!state.marketCards) return;
-        const container = document.getElementById('market-list');
-        container.innerHTML = state.marketCards.map((c, i) => `
+        document.getElementById('market-list').innerHTML = state.marketCards.map((c, i) => `
             <div class="card">
                 <b>${c.name}</b>
                 <div style="margin: 5px 0; font-size:11px;">
