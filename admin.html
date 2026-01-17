@@ -1,131 +1,106 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>CV 終極上帝主控台</title>
+    <title>CV 上帝控制中心 - 自由模式</title>
     <style>
         body { font-family: sans-serif; background: #1a1a2e; color: #fff; padding: 20px; }
-        .section { background: #16213e; border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid #0f3460; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
-        .card { background: #0f3460; padding: 15px; border-radius: 10px; }
-        input, select { background: #1a1a2e; color: white; border: 1px solid #444; padding: 5px; border-radius: 5px; margin: 2px; }
-        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-red { background: #e94560; color: white; }
-        .btn-green { background: #0f969c; color: white; }
-        .btn-blue { background: #3498db; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .card { background: #16213e; padding: 15px; border-radius: 12px; border: 1px solid #4ecca3; position: relative; }
+        input { background: #0f3460; color: white; border: 1px solid #444; padding: 5px; width: 90%; margin: 5px 0; border-radius: 4px; }
+        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .btn-update { background: #4ecca3; color: #1a1a2e; }
+        .btn-refresh { background: #3498db; color: white; font-size: 1.1rem; }
+        .btn-reset { background: #e94560; color: white; }
+        .status-on { color: #4ecca3; font-size: 12px; }
+        .status-off { color: #666; font-size: 12px; }
     </style>
 </head>
 <body>
+    <h1>🛠️ CV 自由模式上帝中心</h1>
+    
+    <div style="background: #0f3460; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <button class="btn btn-refresh" onclick="window.randomizeMarket()">🎲 隨機刷新全場卡片</button>
+        <button class="btn btn-reset" onclick="window.initGame()">🔥 重置全場資料</button>
+    </div>
 
-<h1>🛠️ CV 終極上帝主控台</h1>
-
-<div class="section">
-    <h2>📡 全域核心控制</h2>
-    <button class="btn btn-red" onclick="initGame()">🔥 重置全體遊戲數據</button>
-    <button class="btn btn-blue" onclick="forceNextTurn()">⏩ 強制跳過回合</button>
-</div>
-
-<div class="section">
-    <h2>🛒 市場卡片編輯與制定 (即時生效)</h2>
+    <h2>🛒 市場即時狀態 (可手動修改)</h2>
     <div id="market-editor" class="grid"></div>
-</div>
 
-<div class="section">
-    <h2>👥 所有玩家數據監控 & 加分</h2>
+    <h2>👥 玩家監控 (即時同步資源)</h2>
     <div id="player-monitor" class="grid"></div>
-</div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // 這裡使用了你提供的正確新加坡區域 URL
-    const config = { 
-        apiKey: "AIzaSyA5x6Q2tMCR972PnHw6yzo8X1owq8n6Ppc", 
-        authDomain: "life-24445.firebaseapp.com", 
-        databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app", 
-        projectId: "life-24445" 
-    };
+    const config = { databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app" };
     const app = initializeApp(config);
     const db = getDatabase(app);
     const gRef = ref(db, 'cv_game_state');
 
+    // 擴展卡片庫
+    const cardPool = [
+        { n: "創業大師", c: "智慧x3,金錢x1", g: "金錢x4" },
+        { n: "環球旅行", c: "金錢x2", g: "人際x2,健康x1" },
+        { n: "奧運選手", c: "健康x4", g: "健康x2,人際x1" },
+        { n: "知名作家", c: "智慧x2", g: "智慧x2,人際x1" },
+        { n: "米其林主廚", c: "健康x1,智慧x1", g: "人際x2" },
+        { n: "股票經紀", c: "金錢x2,智慧x1", g: "金錢x3" },
+        { n: "慈善家", c: "金錢x3", g: "人際x4" },
+        { n: "冥想導師", c: "智慧x1", g: "健康x3" },
+        { n: "駭客特工", c: "智慧x4", g: "金錢x2,智慧x1" }
+    ];
+
+    window.initGame = () => {
+        if(!confirm("確定要重置所有人的資料嗎？")) return;
+        const ps = {};
+        const jobs = ["醫生","工程師","畫家","偵探","廚師","機師","農夫","詩人","導遊","太空人"];
+        for(let i=1; i<=10; i++) ps[i] = { id:i, job:jobs[i-1], allTags:{'金錢':0,'智慧':0,'人際':0,'健康':0}, extraScore:0, active: false };
+        set(gRef, { currentRound: 1, marketCards: cardPool.slice(0, 6).map(x => ({name:x.n, cost:x.c, gains:x.g})), players: ps });
+    };
+
+    window.randomizeMarket = () => {
+        const shuffled = cardPool.sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, 6).map(x => ({ name: x.n, cost: x.c, gains: x.g }));
+        update(gRef, { marketCards: selected });
+    };
+
     onValue(gRef, (snap) => {
-        const state = snap.val();
-        if (!state) return;
-        renderMarket(state.marketCards);
-        renderPlayers(state.players);
+        const data = snap.val(); if(!data) return;
+        // 渲染市場
+        document.getElementById('market-editor').innerHTML = data.marketCards.map((c, i) => `
+            <div class="card">
+                <b>卡槽 ${i+1}</b><br>
+                品相: <input id="n-${i}" value="${c.name}"><br>
+                代價: <input id="c-${i}" value="${c.cost}"><br>
+                獎勵: <input id="g-${i}" value="${c.gains}"><br>
+                <button class="btn btn-update" onclick="window.saveCard(${i})">更新此卡</button>
+            </div>
+        `).join('');
+        // 渲染玩家
+        document.getElementById('player-monitor').innerHTML = Object.values(data.players).map(p => `
+            <div class="card">
+                <b>P${p.id}: ${p.job}</b> <span class="${p.active?'status-on':'status-off'}">${p.active?'● 在線':'○ 離線'}</span><br>
+                現有標籤: <small>${JSON.stringify(p.allTags)}</small><br>
+                額外分數: <b>${p.extraScore || 0}</b>
+                <button onclick="window.addScore(${p.id}, 1)">+1</button>
+                <button onclick="window.addScore(${p.id}, -1)">-1</button>
+            </div>
+        `).join('');
     });
 
-    // --- 初始化功能 ---
-    window.initGame = () => {
-        if(!confirm("這會清空所有卡片與玩家資料，確定？")) return;
-        let players = {};
-        for(let i=1; i<=10; i++) players[i] = { id:i, active:false, name:"", tags:{'金錢':0,'智慧':0,'人際':0,'健康':0}, extraScore:0 };
-        
-        // 初始 6 張預設卡片
-        let marketCards = [
-            { id:0, name: "預設成就A", cost: "金錢:1", gain: "智慧:1" },
-            { id:1, name: "預設成就B", cost: "智慧:1", gain: "健康:1" },
-            { id:2, name: "預設成就C", cost: "人際:1", gain: "金錢:1" },
-            { id:3, name: "預設成就D", cost: "健康:1", gain: "人際:1" },
-            { id:4, name: "預設成就E", cost: "金錢:2", gain: "智慧:2" },
-            { id:5, name: "預設成就F", cost: "智慧:2", gain: "健康:2" }
-        ];
-
-        set(gRef, {
-            currentRound: 1, currentTurn: 1,
-            marketCards: marketCards,
-            players: players,
-            turnAction: { hasRolled: false, dice: [] }
-        }).then(() => alert("初始化成功！"));
+    window.saveCard = (i) => {
+        const name = document.getElementById(`n-${i}`).value;
+        const cost = document.getElementById(`c-${i}`).value;
+        const gains = document.getElementById(`g-${i}`).value;
+        update(ref(db, `cv_game_state/marketCards/${i}`), { name, cost, gains });
     };
 
-    // --- 市場卡片編輯 ---
-    function renderMarket(cards) {
-        const cont = document.getElementById('market-editor');
-        cont.innerHTML = cards.map((c, idx) => `
-            <div class="card">
-                <b>位置 ${idx+1}</b><br>
-                品相: <input id="m-n-${idx}" value="${c.name}" onchange="updateCard(${idx})"><br>
-                條件: <input id="m-c-${idx}" value="${c.cost}" onchange="updateCard(${idx})"><br>
-                獎勵: <input id="m-g-${idx}" value="${c.gain}" onchange="updateCard(${idx})">
-            </div>
-        `).join('');
-    }
-
-    window.updateCard = (idx) => {
-        const name = document.getElementById(`m-n-${idx}`).value;
-        const cost = document.getElementById(`m-c-${idx}`).value;
-        const gain = document.getElementById(`m-g-${idx}`).value;
-        update(ref(db, `cv_game_state/marketCards/${idx}`), { name, cost, gain });
-    };
-
-    // --- 玩家監控與加分 ---
-    function renderPlayers(players) {
-        const cont = document.getElementById('player-monitor');
-        cont.innerHTML = Object.values(players).filter(p => p.active).map(p => `
-            <div class="card">
-                <b>${p.name} (位置 ${p.id})</b><br>
-                手動額外加分: <b>${p.extraScore || 0}</b><br>
-                <button class="btn btn-green" onclick="adjustScore(${p.id}, 1)">+1</button>
-                <button class="btn btn-red" onclick="adjustScore(${p.id}, -1)">-1</button>
-                <hr>
-                <small>目前標籤: 金錢:${p.tags.金錢}, 智慧:${p.tags.智慧}, 人際:${p.tags.人際}, 健康:${p.tags.健康}</small>
-            </div>
-        `).join('');
-    }
-
-    window.adjustScore = (id, amt) => {
-        onValue(ref(db, `cv_game_state/players/${id}/extraScore`), (s) => {
-            update(ref(db, `cv_game_state/players/${id}`), { extraScore: (s.val() || 0) + amt });
-        }, { onlyOnce: true });
-    };
-
-    window.forceNextTurn = () => {
-        onValue(gRef, (s) => {
-            let next = (s.val().currentTurn % 10) + 1;
-            update(gRef, { currentTurn: next, turnAction: {hasRolled:false, dice:[]} });
+    window.addScore = (id, amt) => {
+        const pRef = ref(db, `cv_game_state/players/${id}`);
+        onValue(pRef, (s) => {
+            update(pRef, { extraScore: (s.val().extraScore || 0) + amt });
         }, { onlyOnce: true });
     };
 </script>
