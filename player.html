@@ -1,8 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CV 人生履歷 - 玩家端</title>
+    <style>
+        :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --blue: #3498db; --gold: #f1c40f; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; touch-action: manipulation; }
+        .container { width: 100%; max-width: 500px; }
+        .header-info { display: flex; justify-content: space-between; background: var(--main); color: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 14px; }
+        .panel { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .dice-display { display: flex; justify-content: center; gap: 6px; margin: 10px 0; min-height: 50px; }
+        .dice { width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; background: #34495e; border: 2px solid #2c3e50; }
+        .market { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card { border: 1px solid #eee; padding: 10px; border-radius: 10px; background: #fafafa; min-height: 130px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .btn { padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; width: 100%; margin: 5px 0; font-size: 16px; -webkit-appearance: none; }
+        .btn:active { opacity: 0.8; transform: scale(0.98); }
+        .btn:disabled { background: #ccc !important; cursor: not-allowed; transform: none; }
+        #setup { position: fixed; inset: 0; background: white; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .res-text { font-size: 13px; font-weight: bold; margin: 4px 0; display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="setup">
+        <h2 style="color: var(--main);">🧬 選擇你的玩家位置</h2>
+        <p style="color: #666; font-size: 14px;">請先確保上帝端已啟動遊戲</p>
+        <div id="p-btns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 300px;"></div>
+    </div>
+
+    <div class="container" id="game-ui" style="display:none;">
+        <div class="header-info">
+            <span>📅 第 <span id="round-num">1</span> 輪</span>
+            <span>👤 玩家 <span id="p-id"></span></span>
+        </div>
+
+        <div class="panel">
+            <h2 id="job-title" style="text-align:center; margin:0; color: var(--main);">載入職業中...</h2>
+            <div id="dice-container" class="dice-display"></div>
+            <button class="btn" style="background:var(--accent)" id="roll-btn" onclick="window.handleRoll()">🎲 擲骰子</button>
+            <div id="res-summary" style="margin: 10px; font-weight: bold; color: var(--main); text-align:center; font-size: 14px;">等待資料同步...</div>
+        </div>
+
+        <div class="market" id="market-list"></div>
+
+        <div style="margin-top: 15px;">
+            <button class="btn" style="background:var(--main)" id="end-btn" onclick="window.handleEndTurn()">🏁 結束回合</button>
+        </div>
+    </div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // --- Firebase 設定 ---
+    // --- Firebase 配置 ---
     const config = { databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app" };
     const app = initializeApp(config);
     const db = getDatabase(app);
@@ -11,29 +62,78 @@
     let myId = null;
     let state = null;
 
-    // --- 核心邏輯：將函數強制掛載到 window，解決 ReferenceError ---
+    // --- 1. 生成位置按鈕 ---
+    const pContainer = document.getElementById('p-btns');
+    for(let i=1; i<=10; i++) {
+        let b = document.createElement('button');
+        b.className = "btn";
+        b.style.background = "var(--blue)";
+        b.innerText = "位置 " + i;
+        b.onclick = () => { 
+            myId = i; 
+            document.getElementById('setup').style.display = 'none'; 
+            document.getElementById('game-ui').style.display = 'block';
+            update(ref(db, `cv_game_state/players/${i}`), { active: true });
+        };
+        pContainer.appendChild(b);
+    }
 
-    window.roll = () => {
-        if (!state) return;
+    // --- 2. 監聽雲端資料 (手機同步核心) ---
+    onValue(gRef, (snap) => {
+        state = snap.val();
+        if(!state) {
+            document.getElementById('res-summary').innerText = "請通知上帝初始化遊戲！";
+            return;
+        }
+        if(!myId) return;
+
+        const isMyTurn = state.currentTurn == myId;
+        const turnData = state.turnAction || { hasRolled: false, dice: [] };
+
+        // 更新 UI 資訊
+        document.getElementById('p-id').innerText = myId + (isMyTurn ? " (換你操作)" : "");
+        document.getElementById('round-num').innerText = state.currentRound;
+        document.getElementById('job-title').innerText = state.players[myId].job;
+        
+        // 控制按鈕啟度
+        document.getElementById('roll-btn').disabled = !isMyTurn || turnData.hasRolled;
+        document.getElementById('end-btn').disabled = !isMyTurn || !turnData.hasRolled;
+
+        // 渲染骰子
+        const diceHtml = (turnData.dice || []).map(d => `<div class="dice">${d}</div>`).join('');
+        document.getElementById('dice-container').innerHTML = diceHtml;
+        
+        // 提示語更新
+        const summaryMsg = isMyTurn 
+            ? (turnData.hasRolled ? "✨ 骰子已定，請選擇兌換卡片" : "👉 請點擊擲骰子按鈕")
+            : `⏳ 等待玩家 P${state.currentTurn} 行動中...`;
+        document.getElementById('res-summary').innerText = summaryMsg;
+
+        renderMarket(isMyTurn, turnData.hasRolled);
+    });
+
+    // --- 3. 將動作掛載到 window，手機瀏覽器 onclick 才能抓到 ---
+    
+    window.handleRoll = () => {
         const icons = ['💰','🧠','🤝','🏃','😊'];
-        const rolled = []; 
-        for(let i=0; i<6; i++) rolled.push(icons[Math.floor(Math.random()*5)]);
+        const res = []; 
+        for(let i=0; i<6; i++) res.push(icons[Math.floor(Math.random()*5)]);
         
         update(ref(db, 'cv_game_state/turnAction'), { 
             hasRolled: true, 
-            dice: rolled 
-        }).catch(err => console.error("擲骰失敗:", err));
+            dice: res 
+        }).catch(e => alert("連線失敗，請檢查網路"));
     };
 
-    window.buy = (idx) => {
-        if (!state || !state.marketCards) return;
+    window.handleBuy = (idx) => {
         const card = state.marketCards[idx];
-        
-        if (confirm(`確定要兌換「${card.name}」嗎？\n(請上帝確認資源是否足夠)`)) {
-            const p = state.players[myId];
-            if (!p.allTags) p.allTags = {};
+        if(!confirm(`確定要兌換「${card.name}」嗎？`)) return;
 
-            // 解析獎勵並更新至雲端
+        const p = state.players[myId];
+        if(!p.allTags) p.allTags = {};
+
+        // 簡易解析獎勵字串並存回雲端
+        try {
             const gains = card.gains.split(',');
             gains.forEach(g => {
                 let [name, amtStr] = g.split('x');
@@ -42,13 +142,13 @@
             });
 
             update(ref(db, `cv_game_state/players/${myId}`), { allTags: p.allTags })
-                .then(() => alert("✅ 兌換成功！"))
-                .catch(err => alert("❌ 兌換失敗"));
+                .then(() => alert("✅ 兌換成功！標籤已更新至上帝端"));
+        } catch (e) {
+            alert("解析錯誤，請上帝檢查卡片設定格式");
         }
     };
 
-    window.endTurn = () => {
-        if (!state) return;
+    window.handleEndTurn = () => {
         let next = (state.currentTurn % 10) + 1;
         let round = state.currentRound;
         if(next === 1) round++;
@@ -60,53 +160,22 @@
         });
     };
 
-    // --- 位置選擇邏輯 ---
-    const pContainer = document.getElementById('p-btns');
-    for(let i=1; i<=10; i++) {
-        let b = document.createElement('button');
-        b.className = "btn"; b.style.background = "var(--blue)"; b.innerText = "位置 " + i;
-        b.onclick = () => { 
-            myId = i; 
-            document.getElementById('setup').style.display = 'none'; 
-            document.getElementById('game-ui').style.display = 'block';
-            update(ref(db, `cv_game_state/players/${i}`), { active: true });
-        };
-        pContainer.appendChild(b);
-    }
-
-    // --- 資料同步渲染 ---
-    onValue(gRef, (snap) => {
-        state = snap.val();
-        if(!state || !myId) return;
-
-        const isMyTurn = state.currentTurn == myId;
-        const turnData = state.turnAction || { hasRolled: false, dice: [] };
-
-        document.getElementById('p-id').innerText = myId + (isMyTurn ? " (你的回合)" : "");
-        document.getElementById('round-num').innerText = state.currentRound;
-        document.getElementById('job-title').innerText = state.players[myId].job;
-        
-        document.getElementById('roll-btn').disabled = !isMyTurn || turnData.hasRolled;
-        document.getElementById('end-btn').disabled = !isMyTurn || !turnData.hasRolled;
-
-        const diceHtml = (turnData.dice || []).map(d => `<div class="dice">${d}</div>`).join('');
-        document.getElementById('dice-container').innerHTML = diceHtml;
-
-        renderMarket(isMyTurn, turnData.hasRolled);
-    });
-
+    // --- 4. 市場渲染 ---
     function renderMarket(isMyTurn, hasRolled) {
-        if (!state.marketCards) return;
-        document.getElementById('market-list').innerHTML = state.marketCards.map((c, i) => `
+        if(!state.marketCards) return;
+        const container = document.getElementById('market-list');
+        container.innerHTML = state.marketCards.map((c, i) => `
             <div class="card">
-                <b>${c.name}</b>
-                <div style="font-size:10px; margin:5px 0;">
-                    <span style="color:var(--red)">需:${c.cost}</span><br>
-                    <span style="color:var(--green)">得:${c.gains}</span>
+                <b style="color:var(--main); font-size:14px;">${c.name}</b>
+                <div style="margin: 5px 0;">
+                    <span class="res-text" style="color:var(--red)">需：${c.cost}</span>
+                    <span class="res-text" style="color:var(--green)">得：${c.gains}</span>
                 </div>
-                <button class="btn" style="background:var(--green); font-size:12px; height:30px; line-height:30px; padding:0;" 
-                    ${!isMyTurn || !hasRolled ? 'disabled' : ''} onclick="window.buy(${i})">兌換</button>
+                <button class="btn" style="background:var(--green); font-size:13px; height:35px; padding:0;" 
+                    ${!isMyTurn || !hasRolled ? 'disabled' : ''} onclick="window.handleBuy(${i})">兌換卡片</button>
             </div>
         `).join('');
     }
 </script>
+</body>
+</html>
