@@ -1,3 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CV 自由模式 - 玩家端</title>
+    <style>
+        :root { --main: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; --green: #27ae60; --red: #e74c3c; --blue: #3498db; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 500px; display: none; }
+        .panel { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 10px; text-align: center; }
+        .dice-display { display: flex; justify-content: center; gap: 8px; margin: 15px 0; min-height: 50px; }
+        .dice { width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; background: #34495e; border: 2px solid #2c3e50; }
+        .market { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card { border: 1px solid #eee; padding: 10px; border-radius: 10px; background: #fafafa; min-height: 130px; display: flex; flex-direction: column; justify-content: space-between; text-align: center; }
+        .btn { padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; width: 100%; margin: 5px 0; font-size: 16px; }
+        .btn:disabled { background: #ccc !important; }
+        #setup { position: fixed; inset: 0; background: white; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="setup">
+        <h2>🧬 選擇玩家位置</h2>
+        <p id="loading-msg">正在連線至雲端...</p>
+        <div id="p-btns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 300px;"></div>
+    </div>
+
+    <div class="container" id="game-ui">
+        <div class="panel">
+            <h2 id="job-title" style="margin:0;">載入職業中...</h2>
+            <div id="dice-container" class="dice-display"></div>
+            <button class="btn" style="background:var(--accent)" id="roll-btn" onclick="window.handleRoll()">🎲 擲骰子</button>
+            <p id="res-summary" style="font-weight:bold; color:var(--main); font-size:14px;">請點擊擲骰子</p>
+        </div>
+
+        <div class="market" id="market-list"></div>
+
+        <div style="margin-top: 15px;">
+            <button class="btn" style="background:var(--main)" id="end-btn" onclick="window.handleEndTurn()">🏁 重置/下一回合</button>
+        </div>
+    </div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -7,94 +50,93 @@
     const db = getDatabase(app);
     const gRef = ref(db, 'cv_game_state');
 
-    let myId = null, state = null;
-    let myCurrentDice = []; // 存儲目前擲出的骰子
+    let myId = null;
+    let state = null;
+    let myCurrentDice = [];
     let localHasRolled = false;
 
-    // 資源對照表 (中英轉換)
-    const iconToName = { '💰': '金錢', '🧠': '智慧', '🤝': '人際', '跑': '健康', '🏃': '健康', '😊': '笑臉' };
+    const iconToName = { '💰': '金錢', '🧠': '智慧', '🤝': '人際', '🏃': '健康', '😊': '笑臉' };
 
-    // 1. 初始化位置選擇 (省略重複代碼，同前版...)
+    // 初始化按鈕
     const pContainer = document.getElementById('p-btns');
     for(let i=1; i<=10; i++) {
-        let b = document.createElement('button'); b.className = "btn"; b.style.background = "var(--blue)"; b.innerText = "位置 " + i;
-        b.onclick = () => { myId = i; document.getElementById('setup').style.display = 'none'; document.getElementById('game-ui').style.display = 'block'; update(ref(db, `cv_game_state/players/${i}`), { active: true }); };
+        let b = document.createElement('button');
+        b.className = "btn"; b.style.background = "var(--blue)"; b.innerText = "位置 " + i;
+        b.onclick = () => {
+            myId = i;
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('game-ui').style.display = 'block';
+            update(ref(db, `cv_game_state/players/${i}`), { active: true });
+        };
         pContainer.appendChild(b);
     }
 
+    // 監聽雲端
     onValue(gRef, (snap) => {
         state = snap.val();
-        if(!state || !myId) return;
-        document.getElementById('p-id').innerText = myId;
-        document.getElementById('round-num').innerText = state.currentRound;
+        if(!state) {
+            document.getElementById('loading-msg').innerText = "⚠️ 資料庫未初始化，請開啟上帝端按下紅色按鈕";
+            return;
+        }
+        document.getElementById('loading-msg').innerText = "✅ 連線成功，請選擇位置";
+        if(!myId) return;
+
+        // 更新 UI
         document.getElementById('job-title').innerText = state.players[myId].job;
         document.getElementById('roll-btn').disabled = localHasRolled;
         document.getElementById('end-btn').disabled = !localHasRolled;
-        renderMarket(localHasRolled);
+        
+        renderMarket();
     });
 
-    // 🎲 擲骰子並計算當前資源
     window.handleRoll = () => {
         const icons = ['💰','🧠','🤝','🏃','😊'];
-        myCurrentDice = []; 
+        myCurrentDice = [];
         for(let i=0; i<6; i++) myCurrentDice.push(icons[Math.floor(Math.random()*5)]);
         
         const diceHtml = myCurrentDice.map(d => `<div class="dice">${d}</div>`).join('');
         document.getElementById('dice-container').innerHTML = diceHtml;
-        
         localHasRolled = true;
-        renderMarket(true);
+        document.getElementById('res-summary').innerText = "✨ 骰子已定，請選擇兌換";
+        renderMarket();
     };
 
-    // 🛒 兌換邏輯：自動計算資源是否足夠
     window.handleBuy = (idx) => {
         const card = state.marketCards[idx];
-        
-        // --- 核心：資源計算 ---
-        const diceCounts = {}; // 統計手中骰子
-        myCurrentDice.forEach(d => {
-            const name = iconToName[d];
-            diceCounts[name] = (diceCounts[name] || 0) + 1;
-        });
+        const diceCounts = {};
+        myCurrentDice.forEach(d => { const name = iconToName[d]; diceCounts[name] = (diceCounts[name] || 0) + 1; });
 
-        const smileCount = diceCounts['笑臉'] || 0; // 笑臉萬能資源
+        let smileCount = diceCounts['笑臉'] || 0;
         let neededSmiles = 0;
-        let canAfford = true;
-        let missingList = [];
+        let missingInfo = "";
 
-        // 解析成本，例如 "智慧x2,金錢x1"
-        const costItems = card.cost.split(',');
-        costItems.forEach(item => {
+        card.cost.split(',').forEach(item => {
             let [name, amtStr] = item.trim().split('x');
             let amt = parseInt(amtStr) || 1;
-            let currentOwned = diceCounts[name] || 0;
-            
-            if (currentOwned < amt) {
-                neededSmiles += (amt - currentOwned);
-                missingList.push(`${name}缺${amt - currentOwned}`);
+            let have = diceCounts[name.trim()] || 0;
+            if (have < amt) {
+                neededSmiles += (amt - have);
+                missingInfo += `\n- ${name.trim()} 缺 ${amt - have}`;
             }
         });
 
-        // 判斷笑臉是否足以填補空缺
         if (smileCount < neededSmiles) {
-            alert(`❌ 資源不足！\n持有：${JSON.stringify(diceCounts)}\n${missingList.join('\n')}\n(需要 ${neededSmiles} 個笑臉，你只有 ${smileCount} 個)`);
+            alert(`❌ 資源不足！${missingInfo}\n(需 ${neededSmiles} 個笑臉，你只有 ${smileCount} 個)`);
             return;
         }
 
-        // --- 資源足夠，執行兌換 ---
-        if(!confirm(`✅ 資源確認通過 (耗費 ${neededSmiles} 個笑臉當萬能資源)\n確定兌換「${card.name}」？`)) return;
+        if(!confirm(`✅ 資源通過！(耗費 ${neededSmiles} 個笑臉)\n確定兌換「${card.name}」？`)) return;
 
         const p = state.players[myId];
         if(!p.allTags) p.allTags = {};
-        const gains = card.gains.split(',');
-        gains.forEach(g => {
+        card.gains.split(',').forEach(g => {
             let [name, amtStr] = g.trim().split('x');
-            p.allTags[name] = (p.allTags[name] || 0) + (parseInt(amtStr) || 1);
+            p.allTags[name.trim()] = (p.allTags[name.trim()] || 0) + (parseInt(amtStr) || 1);
         });
 
         update(ref(db, `cv_game_state/players/${myId}`), { allTags: p.allTags }).then(() => {
-            alert("🎉 兌換成功！已加入你的履歷。");
-            window.handleEndTurn(); // 兌換完自動重置骰子
+            alert("🎉 兌換成功！");
+            window.handleEndTurn();
         });
     };
 
@@ -102,20 +144,24 @@
         localHasRolled = false;
         myCurrentDice = [];
         document.getElementById('dice-container').innerHTML = "";
+        document.getElementById('res-summary').innerText = "請點擊擲骰子";
+        renderMarket();
     };
 
-    function renderMarket(hasRolled) {
-        if(!state.marketCards) return;
+    function renderMarket() {
+        if(!state || !state.marketCards) return;
         document.getElementById('market-list').innerHTML = state.marketCards.map((c, i) => `
             <div class="card">
-                <b>${c.name}</b>
-                <div style="margin: 5px 0; font-size:11px;">
+                <b style="color:var(--main); font-size:14px;">${c.name}</b>
+                <div style="font-size:11px; margin:5px 0;">
                     <span style="color:var(--red)">需：${c.cost}</span><br>
                     <span style="color:var(--green)">得：${c.gains}</span>
                 </div>
                 <button class="btn" style="background:var(--green); font-size:12px; height:35px; padding:0;" 
-                    ${!hasRolled ? 'disabled' : ''} onclick="window.handleBuy(${i})">兌換</button>
+                    ${!localHasRolled ? 'disabled' : ''} onclick="window.handleBuy(${i})">兌換</button>
             </div>
         `).join('');
     }
 </script>
+</body>
+</html>
