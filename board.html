@@ -2,96 +2,70 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>CV 終極上帝模式</title>
+    <title>CV 榮耀榜</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a2e; color: #fff; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
-        .card { background: #16213e; padding: 15px; border-radius: 12px; border: 1px solid #4ecca3; }
-        input { background: #0f3460; color: white; border: 1px solid #444; padding: 5px; width: 80%; margin: 5px 0; }
-        .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-add { background: #4ecca3; color: #1a1a2e; }
-        .btn-reset { background: #e94560; color: white; }
+        body { background: #0f0f23; color: white; text-align: center; font-family: 'PingFang TC', sans-serif; }
+        .container { max-width: 800px; margin: auto; padding: 20px; }
+        .rank-item { 
+            background: linear-gradient(90deg, #16213e, #1a1a2e); 
+            margin: 15px 0; padding: 20px; border-radius: 15px; 
+            display: flex; justify-content: space-between; align-items: center;
+            border-left: 8px solid #4ecca3; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .rank-number { font-size: 2rem; font-weight: bold; color: #4ecca3; width: 50px; }
+        .rank-info { flex-grow: 1; text-align: left; margin-left: 20px; }
+        .rank-score { font-size: 2.5rem; font-weight: bold; color: #f1c40f; }
+        .tag-summary { font-size: 0.9rem; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
-    <h1>🛠️ CV 上帝控制中心</h1>
-    <div style="margin-bottom: 20px;">
-        <button class="btn btn-reset" onclick="initGame()">🔥 重置並強制重新初始化 (全場清空)</button>
+    <div class="container">
+        <h1 style="font-size: 3rem; margin-bottom: 10px;">🏆 玩家成就排行</h1>
+        <p style="color: #4ecca3;">計分規則：同類標籤 (1-2個:2分 | 3-4個:4分 | 5-6個:6分 | 7個+:每多1個+1分)</p>
+        <div id="leaderboard"></div>
     </div>
-
-    <h2>🛒 市場品相與條件制定 (即時同步)</h2>
-    <div id="market-editor" class="grid"></div>
-
-    <h2>👥 全玩家監控 (身份、資源、加分)</h2>
-    <div id="player-monitor" class="grid"></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const config = { databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app" };
     const app = initializeApp(config);
     const db = getDatabase(app);
-    const gRef = ref(db, 'cv_game_state');
 
-    window.initGame = () => {
-        if(!confirm("確定要重置嗎？")) return;
-        const ps = {};
-        const jobs = ["醫生","工程師","畫家","偵探","廚師","機師","農夫","詩人","導遊","太空人"];
-        for(let i=1; i<=10; i++) ps[i] = { id:i, job:jobs[i-1], allTags:{'金錢':0,'智慧':0,'人際':0,'健康':0}, extraScore:0, active: false };
-        
-        set(gRef, {
-            currentRound: 1, currentTurn: 1,
-            marketCards: [
-                { name: "矽谷創業", cost: "智慧x2,人際x1", gains: "金錢x4" },
-                { name: "環球旅行", cost: "金錢x2", gains: "人際x2,健康x1" },
-                { name: "醫學院", cost: "智慧x3", gains: "智慧x2,健康x2" },
-                { name: "股市大戶", cost: "金錢x2,智慧x1", gains: "金錢x3" },
-                { name: "瑜珈大師", cost: "智慧x1,健康x1", gains: "健康x2" },
-                { name: "電音DJ", cost: "人際x1", gains: "人際x2" }
-            ],
-            players: ps,
-            turnAction: { hasRolled: false, dice: [], currentRes: {} }
-        });
-    };
+    function calculateScore(count) {
+        if (count <= 0) return 0;
+        if (count <= 2) return 2;
+        if (count <= 4) return 4;
+        if (count <= 6) return 6;
+        return 6 + (count - 6);
+    }
 
-    onValue(gRef, (snap) => {
-        const data = snap.val(); if(!data) return;
-        // 渲染市場編輯
-        document.getElementById('market-editor').innerHTML = data.marketCards.map((c, i) => `
-            <div class="card">
-                <b>位置 ${i+1}</b><br>
-                品相: <input id="n-${i}" value="${c.name}"><br>
-                條件: <input id="c-${i}" value="${c.cost}"><br>
-                獎勵: <input id="g-${i}" value="${c.gains}"><br>
-                <button class="btn btn-add" onclick="saveCard(${i})">儲存更新</button>
-            </div>
-        `).join('');
-        // 渲染玩家監控
-        document.getElementById('player-monitor').innerHTML = Object.values(data.players).map(p => `
-            <div class="card" style="${p.active?'border:2px solid gold':''}">
-                <b>P${p.id}: ${p.job} ${p.active?'(在線)':'(離線)'}</b><br>
-                額外加分: <b>${p.extraScore}</b>
-                <button onclick="addScore(${p.id}, 1)">+1</button>
-                <button onclick="addScore(${p.id}, -1)">-1</button>
-                <hr>
-                <small>現有資源: ${JSON.stringify(p.allTags)}</small>
+    onValue(ref(db, 'cv_game_state/players'), (snap) => {
+        const ps = snap.val(); if(!ps) return;
+        const list = Object.values(ps).map(p => {
+            let total = p.extraScore || 0;
+            let detail = "";
+            if(p.allTags) {
+                Object.entries(p.allTags).forEach(([k, v]) => {
+                    total += calculateScore(v);
+                    if(v > 0) detail += `${k}:${v} `;
+                });
+            }
+            return { job: p.job, score: total, detail, active: p.active };
+        }).sort((a,b) => b.score - a.score);
+
+        document.getElementById('leaderboard').innerHTML = list.map((p, i) => `
+            <div class="rank-item" style="opacity: ${p.active ? 1 : 0.5}">
+                <div class="rank-number">#${i+1}</div>
+                <div class="rank-info">
+                    <div style="font-size: 1.5rem; font-weight: bold;">${p.job}</div>
+                    <div class="tag-summary">${p.detail || '尚未獲得標籤'}</div>
+                </div>
+                <div class="rank-score">${p.score}</div>
             </div>
         `).join('');
     });
-
-    window.saveCard = (i) => {
-        const name = document.getElementById(`n-${i}`).value;
-        const cost = document.getElementById(`c-${i}`).value;
-        const gains = document.getElementById(`g-${i}`).value;
-        update(ref(db, `cv_game_state/marketCards/${i}`), { name, cost, gains });
-    };
-
-    window.addScore = (id, amt) => {
-        onValue(ref(db, `cv_game_state/players/${id}/extraScore`), (s) => {
-            update(ref(db, `cv_game_state/players/${id}`), { extraScore: (s.val() || 0) + amt });
-        }, { onlyOnce: true });
-    };
 </script>
 </body>
 </html>
