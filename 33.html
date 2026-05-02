@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>25 宮格・翻牌挑戰</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+–ink: #1a1612;
+–paper: #f4ede0;
+–paper-deep: #e8dcc4;
+–accent: #c8341f;
+–accent-deep: #8a1f10;
+–gold: #b08a3e;
+–shadow: rgba(26, 22, 18, 0.18);
+}
+
+html, body {
+background: var(–paper);
+color: var(–ink);
+font-family: ‘Noto Serif TC’, serif;
+min-height: 100vh;
+overflow-x: hidden;
+}
+
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image:
+radial-gradient(circle at 20% 30%, rgba(176, 138, 62, 0.08) 0%, transparent 40%),
+radial-gradient(circle at 80% 70%, rgba(200, 52, 31, 0.06) 0%, transparent 50%),
+repeating-linear-gradient(45deg, transparent 0, transparent 2px, rgba(26, 22, 18, 0.012) 2px, rgba(26, 22, 18, 0.012) 4px);
+pointer-events: none;
+z-index: 0;
+}
+
+.container {
+position: relative;
+z-index: 1;
+max-width: 1100px;
+margin: 0 auto;
+padding: 40px 24px 80px;
+}
+
+header {
+text-align: center;
+margin-bottom: 32px;
+}
+
+.eyebrow {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+font-size: 14px;
+letter-spacing: 0.4em;
+text-transform: uppercase;
+color: var(–accent);
+margin-bottom: 12px;
+}
+
+h1 {
+font-size: clamp(36px, 6vw, 64px);
+font-weight: 900;
+letter-spacing: -0.02em;
+line-height: 1;
+margin-bottom: 14px;
+}
+
+h1 .num {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+color: var(–accent);
+font-weight: 400;
+}
+
+.subtitle {
+font-size: 14px;
+color: rgba(26, 22, 18, 0.6);
+letter-spacing: 0.08em;
+}
+
+.stages {
+display: inline-flex;
+align-items: center;
+gap: 8px;
+margin-top: 14px;
+padding: 8px 16px;
+border: 1px dashed rgba(26, 22, 18, 0.3);
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+letter-spacing: 0.1em;
+color: rgba(26, 22, 18, 0.7);
+flex-wrap: wrap;
+justify-content: center;
+}
+
+.stages span.arr { color: var(–accent); font-weight: 700; }
+
+.scoreboard {
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 14px;
+margin-bottom: 24px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 13px;
+letter-spacing: 0.1em;
+flex-wrap: wrap;
+}
+
+.score-label {
+color: rgba(26, 22, 18, 0.5);
+text-transform: uppercase;
+margin-right: 6px;
+}
+
+.score-value {
+font-weight: 700;
+color: var(–ink);
+font-size: 16px;
+}
+
+.btn {
+background: transparent;
+border: 1px solid var(–ink);
+color: var(–ink);
+padding: 6px 14px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+cursor: pointer;
+transition: all 0.3s ease;
+}
+
+.btn:hover {
+background: var(–ink);
+color: var(–paper);
+}
+
+.btn.primary {
+background: var(–accent);
+border-color: var(–accent);
+color: var(–paper);
+}
+
+.btn.primary:hover {
+background: var(–accent-deep);
+border-color: var(–accent-deep);
+}
+
+/* 25 宮格 */
+.grid {
+display: grid;
+grid-template-columns: repeat(5, 1fr);
+gap: 12px;
+perspective: 1800px;
+}
+
+/* 三階段：用單面卡 + 翻轉動畫切換內容 */
+.cell {
+aspect-ratio: 1;
+position: relative;
+cursor: pointer;
+transform-style: preserve-3d;
+transition: transform 0.7s cubic-bezier(0.6, 0.05, 0.3, 1);
+}
+
+/* 翻轉時切換階段 */
+.cell.flipping {
+transform: rotateY(90deg);
+}
+
+.face {
+position: absolute;
+inset: 0;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+padding: 12px 8px;
+box-shadow: 0 4px 14px var(–shadow);
+transition: box-shadow 0.3s ease, opacity 0.3s ease;
+overflow: hidden;
+}
+
+.face::before {
+content: ‘’;
+position: absolute;
+inset: 5px;
+border: 1px solid rgba(26, 22, 18, 0.1);
+pointer-events: none;
+}
+
+/* 階段 0：數字（米色） */
+.face.stage-0 {
+background: linear-gradient(135deg, var(–paper) 0%, var(–paper-deep) 100%);
+border: 1px solid rgba(26, 22, 18, 0.18);
+text-align: center;
+}
+
+.big-num {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+font-weight: 400;
+font-size: clamp(48px, 7vw, 80px);
+line-height: 0.9;
+color: var(–ink);
+letter-spacing: -0.03em;
+}
+
+/* 階段 1：常見錯誤（深墨色） */
+.face.stage-1 {
+background: linear-gradient(135deg, #2e2823 0%, #1a1612 100%);
+color: var(–paper);
+text-align: center;
+}
+
+.face.stage-1::before {
+border-color: rgba(244, 237, 224, 0.2);
+}
+
+.stage-1-label {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+font-size: 10px;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(–accent);
+margin-bottom: 6px;
+opacity: 0.9;
+}
+
+.stage-1-text {
+font-size: clamp(11px, 1.4vw, 14px);
+font-weight: 700;
+line-height: 1.35;
+padding: 0 4px;
+}
+
+.stage-1-divider {
+width: 24px;
+height: 1px;
+background: var(–accent);
+margin: 4px auto;
+opacity: 0.6;
+}
+
+/* 階段 2：任務（紅色） */
+.face.stage-2 {
+background: linear-gradient(135deg, var(–accent) 0%, var(–accent-deep) 100%);
+color: var(–paper);
+text-align: center;
+}
+
+.face.stage-2::before {
+border-color: rgba(244, 237, 224, 0.3);
+}
+
+.stage-2-label {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+font-size: 10px;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(–gold);
+margin-bottom: 6px;
+}
+
+.stage-2-text {
+font-size: clamp(11px, 1.4vw, 14px);
+font-weight: 700;
+line-height: 1.35;
+padding: 0 4px;
+}
+
+.stage-2-divider {
+width: 24px;
+height: 1px;
+background: var(–gold);
+margin: 4px auto;
+opacity: 0.6;
+}
+
+/* 階段 3：完成（黑底金印） */
+.face.stage-3 {
+background: linear-gradient(135deg, #2a2520 0%, #0e0c0a 100%);
+color: var(–gold);
+text-align: center;
+}
+
+.face.stage-3::before {
+border-color: rgba(176, 138, 62, 0.4);
+}
+
+.stamp-big {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+font-size: clamp(20px, 3vw, 32px);
+letter-spacing: 0.15em;
+color: var(–gold);
+border: 2px solid var(–gold);
+padding: 4px 14px;
+border-radius: 2px;
+transform: rotate(-8deg);
+font-weight: 700;
+}
+
+/* 角落標籤 */
+.corner-tag {
+position: absolute;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 8px;
+letter-spacing: 0.2em;
+opacity: 0.7;
+z-index: 2;
+}
+
+.corner-tl { top: 8px; left: 10px; }
+.corner-br { bottom: 8px; right: 10px; }
+
+.face.stage-0 .corner-tag { color: var(–accent); }
+.face.stage-1 .corner-tag { color: var(–accent); }
+.face.stage-2 .corner-tag { color: var(–gold); }
+.face.stage-3 .corner-tag { color: var(–gold); opacity: 0.5; }
+
+/* hover */
+.cell:not(.flipping):hover {
+transform: translateY(-4px) rotateX(2deg);
+}
+
+.cell:not(.flipping):hover .face {
+box-shadow: 0 14px 30px rgba(26, 22, 18, 0.28);
+}
+
+/* 編輯按鈕 */
+.edit-btn {
+position: absolute;
+bottom: 6px;
+right: 6px;
+width: 22px;
+height: 22px;
+border-radius: 50%;
+background: rgba(26, 22, 18, 0.08);
+border: none;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 11px;
+color: var(–ink);
+opacity: 0;
+transition: all 0.2s ease;
+z-index: 5;
+}
+
+.face:hover .edit-btn {
+opacity: 0.8;
+}
+
+.edit-btn:hover {
+background: var(–ink);
+color: var(–paper);
+opacity: 1 !important;
+}
+
+.face.stage-1 .edit-btn,
+.face.stage-2 .edit-btn,
+.face.stage-3 .edit-btn {
+background: rgba(244, 237, 224, 0.15);
+color: var(–paper);
+}
+
+.face.stage-1 .edit-btn:hover,
+.face.stage-2 .edit-btn:hover,
+.face.stage-3 .edit-btn:hover {
+background: var(–paper);
+color: var(–ink);
+}
+
+/* 提示氣泡 */
+.toast {
+position: fixed;
+bottom: 32px;
+left: 50%;
+transform: translateX(-50%) translateY(120px);
+background: var(–ink);
+color: var(–paper);
+padding: 14px 28px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 12px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+z-index: 100;
+pointer-events: none;
+}
+
+.toast.show {
+transform: translateX(-50%) translateY(0);
+}
+
+/* 編輯彈窗 */
+.modal {
+position: fixed;
+inset: 0;
+background: rgba(26, 22, 18, 0.7);
+display: none;
+align-items: center;
+justify-content: center;
+z-index: 300;
+padding: 20px;
+opacity: 0;
+transition: opacity 0.3s ease;
+}
+
+.modal.show {
+display: flex;
+opacity: 1;
+}
+
+.modal-content {
+background: var(–paper);
+padding: 32px 28px;
+max-width: 480px;
+width: 100%;
+box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+border: 1px solid rgba(26, 22, 18, 0.2);
+transform: scale(0.9);
+transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+position: relative;
+}
+
+.modal.show .modal-content {
+transform: scale(1);
+}
+
+.modal-content::before {
+content: ‘’;
+position: absolute;
+inset: 6px;
+border: 1px solid rgba(26, 22, 18, 0.12);
+pointer-events: none;
+}
+
+.modal-eyebrow {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+font-size: 12px;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(–accent);
+margin-bottom: 8px;
+}
+
+.modal-title {
+font-size: 24px;
+font-weight: 900;
+margin-bottom: 24px;
+}
+
+.modal-title .n {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+color: var(–accent);
+font-weight: 400;
+}
+
+.field {
+margin-bottom: 18px;
+}
+
+.field label {
+display: block;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: rgba(26, 22, 18, 0.6);
+margin-bottom: 6px;
+}
+
+.field textarea {
+width: 100%;
+padding: 10px 12px;
+background: rgba(255, 255, 255, 0.5);
+border: 1px solid rgba(26, 22, 18, 0.25);
+font-family: ‘Noto Serif TC’, serif;
+font-size: 15px;
+color: var(–ink);
+font-weight: 700;
+resize: vertical;
+min-height: 70px;
+transition: border-color 0.2s ease;
+}
+
+.field textarea:focus {
+outline: none;
+border-color: var(–accent);
+background: white;
+}
+
+.modal-actions {
+display: flex;
+gap: 10px;
+justify-content: flex-end;
+margin-top: 24px;
+}
+
+/* 慶祝畫面 */
+.celebration {
+position: fixed;
+inset: 0;
+background: rgba(26, 22, 18, 0.94);
+display: none;
+align-items: center;
+justify-content: center;
+z-index: 200;
+opacity: 0;
+transition: opacity 0.5s ease;
+}
+
+.celebration.show {
+display: flex;
+opacity: 1;
+}
+
+.celebration-content {
+text-align: center;
+color: var(–paper);
+transform: scale(0.8);
+transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+padding: 0 20px;
+}
+
+.celebration.show .celebration-content {
+transform: scale(1);
+}
+
+.celebration h2 {
+font-family: ‘Bodoni Moda’, serif;
+font-style: italic;
+font-size: clamp(48px, 10vw, 96px);
+font-weight: 400;
+color: var(–accent);
+margin-bottom: 16px;
+}
+
+.celebration p {
+font-size: 16px;
+letter-spacing: 0.2em;
+opacity: 0.8;
+margin-bottom: 32px;
+}
+
+/* 響應式 */
+@media (max-width: 600px) {
+.container { padding: 24px 12px 60px; }
+.grid { gap: 6px; }
+.face { padding: 8px 4px; }
+.corner-tag { font-size: 7px; }
+.corner-tl { top: 5px; left: 6px; }
+.corner-br { bottom: 5px; right: 6px; }
+.stage-1-text, .stage-2-text { font-size: 10.5px; line-height: 1.3; }
+.stage-1-label, .stage-2-label { font-size: 8px; margin-bottom: 4px; letter-spacing: 0.2em; }
+.stage-1-divider, .stage-2-divider { margin: 3px auto; }
+.stamp-big { font-size: 18px; padding: 3px 10px; }
+.edit-btn { width: 20px; height: 20px; font-size: 10px; opacity: 0.5; }
+.modal-content { padding: 24px 20px; }
+}
+</style>
+
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="eyebrow">Twenty-Five Squares</div>
+      <h1><span class="num">25</span> 宮格挑戰</h1>
+      <div class="subtitle">每格藏著一個常見的錯誤與對應解方</div>
+      <div class="stages">
+        <span>數字</span> <span class="arr">→</span>
+        <span>常見錯誤</span> <span class="arr">→</span>
+        <span>任務</span> <span class="arr">→</span>
+        <span>完成 ✓</span>
+      </div>
+    </header>
+
+```
+<div class="scoreboard">
+  <div>
+    <span class="score-label">已翻開</span>
+    <span class="score-value" id="flipped">0</span>
+  </div>
+  <div>
+    <span class="score-label">已完成</span>
+    <span class="score-value" id="done">0 / 25</span>
+  </div>
+  <button class="btn" id="resetBtn">重置進度</button>
+  <button class="btn" id="resetContentBtn">恢復預設內容</button>
+</div>
+
+<div class="grid" id="grid"></div>
+```
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 編輯彈窗 -->
+
+  <div class="modal" id="editModal">
+    <div class="modal-content">
+      <div class="modal-eyebrow">Edit Card</div>
+      <div class="modal-title">編輯第 <span class="n" id="editNum">01</span> 格</div>
+      <div class="field">
+        <label>常見的錯（第二階段顯示）</label>
+        <textarea id="editQ" placeholder="例如：把忙碌當成有產出"></textarea>
+      </div>
+      <div class="field">
+        <label>對應任務（第三階段顯示）</label>
+        <textarea id="editT" placeholder="例如：今天空出 30 分鐘什麼都不做"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="cancelEdit">取消</button>
+        <button class="btn primary" id="saveEdit">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="celebration" id="celebration">
+    <div class="celebration-content">
+      <h2>Bravo!</h2>
+      <p>你已破解全部 25 個常見錯誤</p>
+      <button class="btn" id="closeBtn" style="border-color: var(--paper); color: var(--paper);">再來一輪</button>
+    </div>
+  </div>
+
+<script>
+  const defaultItems = [
+    { q: "把忙碌當成有產出", t: "今天空出 30 分鐘，什麼都不做" },
+    { q: "用滑手機紓壓", t: "把手機放遠處，深呼吸 10 次" },
+    { q: "想太多卻沒開始", t: "選一件事，立刻做 5 分鐘" },
+    { q: "對自己太苛刻", t: "寫下 3 個自己的優點" },
+    { q: "熬夜以為賺到時間", t: "今晚提早 30 分鐘上床" },
+    { q: "用比較換來焦慮", t: "取消追蹤一個讓你焦慮的帳號" },
+    { q: "答應不想做的事", t: "練習一次禮貌地拒絕" },
+    { q: "邊吃飯邊滑手機", t: "下一餐放下手機，專心吃飯" },
+    { q: "等心情好才行動", t: "先做 2 分鐘，等心情趕上你" },
+    { q: "壓力來才想到喝水", t: "現在就喝一杯水" },
+    { q: "報復性追劇", t: "今晚提前關掉螢幕 30 分鐘" },
+    { q: "永遠在回訊息", t: "設一個免打擾時段 90 分鐘" },
+    { q: "不敢開口求助", t: "向一個人說「我需要幫忙」" },
+    { q: "把感謝放心裡", t: "傳訊息謝謝一個人" },
+    { q: "忽略身體訊號", t: "起身伸展 3 分鐘" },
+    { q: "預支未來的煩惱", t: "寫下擔心的事，圈出能控制的" },
+    { q: "用購物填補空虛", t: "把購物車放置 24 小時再決定" },
+    { q: "完美主義拖延", t: "交出一個「夠好」的版本" },
+    { q: "整天不曬太陽", t: "出門走 10 分鐘，看天空" },
+    { q: "用咖啡因撐過一切", t: "今天多喝一杯白開水代替" },
+    { q: "把自己排在最後", t: "做一件只為自己開心的小事" },
+    { q: "硬撐不肯休息", t: "閉眼休息 5 分鐘，什麼都不做" },
+    { q: "情緒上來就壓抑", t: "對自己說：「這樣感覺很正常」" },
+    { q: "目標訂得太大", t: "把今天的目標砍半" },
+    { q: "忘了給自己肯定", t: "寫下今天做得好的 1 件事" }
+  ];
+
+  let items = JSON.parse(JSON.stringify(defaultItems));
+
+  // 每格的階段 0=數字、1=錯誤、2=任務、3=完成
+  let stages = new Array(25).fill(0);
+
+  const grid = document.getElementById('grid');
+  const flippedEl = document.getElementById('flipped');
+  const doneEl = document.getElementById('done');
+  const toast = document.getElementById('toast');
+  const celebration = document.getElementById('celebration');
+  const resetBtn = document.getElementById('resetBtn');
+  const resetContentBtn = document.getElementById('resetContentBtn');
+  const closeBtn = document.getElementById('closeBtn');
+
+  const editModal = document.getElementById('editModal');
+  const editNum = document.getElementById('editNum');
+  const editQ = document.getElementById('editQ');
+  const editT = document.getElementById('editT');
+  const cancelEdit = document.getElementById('cancelEdit');
+  const saveEdit = document.getElementById('saveEdit');
+  let editingIndex = -1;
+
+  async function loadAll() {
+    try {
+      const c = await window.storage.get('content25');
+      if (c && c.value) {
+        const saved = JSON.parse(c.value);
+        if (Array.isArray(saved) && saved.length === 25) items = saved;
+      }
+    } catch (e) {}
+    try {
+      const s = await window.storage.get('stages25');
+      if (s && s.value) {
+        const arr = JSON.parse(s.value);
+        if (Array.isArray(arr) && arr.length === 25) stages = arr;
+      }
+    } catch (e) {}
+  }
+
+  async function saveContent() {
+    try { await window.storage.set('content25', JSON.stringify(items)); } catch (e) {}
+  }
+
+  async function saveStages() {
+    try { await window.storage.set('stages25', JSON.stringify(stages)); } catch (e) {}
+  }
+
+  function updateScore() {
+    const flippedCount = stages.filter(s => s >= 1).length;
+    const doneCount = stages.filter(s => s === 3).length;
+    flippedEl.textContent = flippedCount;
+    doneEl.textContent = `${doneCount} / 25`;
+    if (doneCount === 25) {
+      setTimeout(() => celebration.classList.add('show'), 700);
+    }
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function renderFace(i) {
+    const stage = stages[i];
+    const num = String(i + 1).padStart(2, '0');
+    const item = items[i];
+
+    if (stage === 0) {
+      return `
+        <div class="face stage-0">
+          <span class="corner-tag corner-tl">N°${num}</span>
+          <span class="corner-tag corner-br">25</span>
+          <div class="big-num">${i + 1}</div>
+          <button class="edit-btn" data-edit="${i}" title="編輯">✎</button>
+        </div>
+      `;
+    }
+    if (stage === 1) {
+      return `
+        <div class="face stage-1">
+          <span class="corner-tag corner-tl">N°${num}</span>
+          <span class="corner-tag corner-br">ERROR</span>
+          <div class="stage-1-label">— 常見的錯 —</div>
+          <div class="stage-1-divider"></div>
+          <div class="stage-1-text">${escapeHtml(item.q)}</div>
+          <button class="edit-btn" data-edit="${i}" title="編輯">✎</button>
+        </div>
+      `;
+    }
+    if (stage === 2) {
+      return `
+        <div class="face stage-2">
+          <span class="corner-tag corner-tl">N°${num}</span>
+          <span class="corner-tag corner-br">TASK</span>
+          <div class="stage-2-label">— 你的任務 —</div>
+          <div class="stage-2-divider"></div>
+          <div class="stage-2-text">${escapeHtml(item.t)}</div>
+          <button class="edit-btn" data-edit="${i}" title="編輯">✎</button>
+        </div>
+      `;
+    }
+    // stage 3
+    return `
+      <div class="face stage-3">
+        <span class="corner-tag corner-tl">N°${num}</span>
+        <span class="corner-tag corner-br">DONE</span>
+        <div class="stamp-big">DONE</div>
+        <button class="edit-btn" data-edit="${i}" title="編輯">✎</button>
+      </div>
+    `;
+  }
+
+  function buildGrid() {
+    grid.innerHTML = '';
+    items.forEach((item, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.index = i;
+      cell.innerHTML = renderFace(i);
+      grid.appendChild(cell);
+    });
+    attachListeners();
+    updateScore();
+  }
+
+  function attachListeners() {
+    grid.querySelectorAll('.cell').forEach((cell) => {
+      cell.addEventListener('click', handleCellClick);
+    });
+  }
+
+  function handleCellClick(e) {
+    const cell = e.currentTarget;
+    const i = parseInt(cell.dataset.index, 10);
+
+    // 點到編輯按鈕
+    if (e.target.closest('.edit-btn')) {
+      e.stopPropagation();
+      openEdit(i);
+      return;
+    }
+
+    // 防止動畫進行中重複觸發
+    if (cell.classList.contains('flipping')) return;
+
+    // 推進階段（4 → 0 循環）
+    const nextStage = (stages[i] + 1) % 4;
+
+    // 加上翻轉動畫
+    cell.classList.add('flipping');
+
+    // 在卡片轉到一半（看不見）時切換內容
+    setTimeout(() => {
+      stages[i] = nextStage;
+      cell.innerHTML = renderFace(i);
+      // 翻回正面
+      cell.classList.remove('flipping');
+      saveStages();
+      updateScore();
+
+      const messages = ['已收回', '常見錯誤揭曉', '任務出現', '完成 ✓'];
+      showToast(messages[nextStage]);
+    }, 350);
+  }
+
+  function openEdit(i) {
+    editingIndex = i;
+    editNum.textContent = String(i + 1).padStart(2, '0');
+    editQ.value = items[i].q;
+    editT.value = items[i].t;
+    editModal.classList.add('show');
+    setTimeout(() => editQ.focus(), 300);
+  }
+
+  function closeEdit() {
+    editModal.classList.remove('show');
+    editingIndex = -1;
+  }
+
+  cancelEdit.addEventListener('click', closeEdit);
+
+  editModal.addEventListener('click', (e) => {
+    if (e.target === editModal) closeEdit();
+  });
+
+  saveEdit.addEventListener('click', async () => {
+    if (editingIndex < 0) return;
+    const q = editQ.value.trim();
+    const t = editT.value.trim();
+    if (!q || !t) {
+      showToast('兩格都要填');
+      return;
+    }
+    items[editingIndex] = { q, t };
+    await saveContent();
+    // 重新渲染那一格
+    const cell = grid.querySelector(`[data-index="${editingIndex}"]`);
+    if (cell) cell.innerHTML = renderFace(editingIndex);
+    closeEdit();
+    showToast('已更新');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (editModal.classList.contains('show')) {
+      if (e.key === 'Escape') closeEdit();
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEdit.click();
+    }
+  });
+
+  resetBtn.addEventListener('click', async () => {
+    if (confirm('重置翻牌進度？（不會影響你編輯的內容）')) {
+      stages = new Array(25).fill(0);
+      await saveStages();
+      buildGrid();
+      celebration.classList.remove('show');
+    }
+  });
+
+  resetContentBtn.addEventListener('click', async () => {
+    if (confirm('恢復成預設的 25 個內容？你自訂的會被覆蓋。')) {
+      items = JSON.parse(JSON.stringify(defaultItems));
+      await saveContent();
+      buildGrid();
+      showToast('已恢復預設');
+    }
+  });
+
+  closeBtn.addEventListener('click', () => {
+    celebration.classList.remove('show');
+  });
+
+  (async () => {
+    await loadAll();
+    buildGrid();
+  })();
+</script>
+
+</body>
+</html>
