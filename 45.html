@@ -3,127 +3,162 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>骰子城市（簡易版）</title>
+<title>骰子城市（單機多人）</title>
 <style>
-body{
-  font-family: sans-serif;
-  background:#f5f5f5;
-  padding:15px;
-}
-.card{
-  background:#fff;
-  border-radius:12px;
-  padding:15px;
-  margin-bottom:12px;
-}
-button{
-  padding:12px;
-  border:none;
-  border-radius:8px;
-  background:#1D9E75;
-  color:#fff;
-  font-size:16px;
-  width:100%;
-}
-.shop button{
-  margin-top:6px;
-}
+body{font-family:sans-serif;background:#f5f5f5;padding:12px;}
+.card{background:#fff;padding:12px;border-radius:10px;margin-bottom:10px;}
+button{padding:10px;border:none;border-radius:8px;background:#1D9E75;color:#fff;width:100%;margin-top:6px;}
+.dice{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+.d{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;}
+.red{background:#ffd6d6;}
+.blue{background:#d6e6ff;}
 </style>
 </head>
 <body>
 
-<h2>🎲 骰子城市（手機版）</h2>
+<h3>🎲 骰子城市（單機多人）</h3>
 
 <div class="card">
-  <h3>資源</h3>
-  🪵 木材：<span id="wood">0</span><br>
-  🪨 石材：<span id="stone">0</span><br>
-  🌽 食物：<span id="food">0</span><br>
-  ⭐ 積分：<span id="score">0</span>
+目前玩家：<b id="current"></b>
+<button onclick="nextPlayer()">👉 下一位玩家</button>
 </div>
 
 <div class="card">
-  <h3>🎲 擲骰</h3>
-  <button onclick="rollDice()">擲骰子</button>
-  <p id="dice-result"></p>
+🪵 <span id="wood"></span>
+🪨 <span id="stone"></span>
+🌽 <span id="food"></span><br>
+⭐ <span id="score"></span>
 </div>
 
 <div class="card">
-  <h3>🏗️ 我的建築</h3>
-  <div id="buildings">（尚未擁有）</div>
+<button onclick="roll()">🎲 擲骰（12顆）</button>
+<div id="dice" class="dice"></div>
+<div id="log"></div>
 </div>
 
-<div class="card shop">
-  <h3>🛒 商店</h3>
+<div class="card">
+🏗 建築：
+<div id="buildings"></div>
+</div>
 
-  <button onclick="buy('woodFarm')">🌲 伐木場（骰到2 → 木+2）</button>
-  <button onclick="buy('stoneMine')">⛏️ 採石場（骰到3 → 石+2）</button>
-  <button onclick="buy('farm')">🌾 農場（骰到4 → 食+2）</button>
-  <button onclick="buy('market')">🏪 市集（骰到5 → 分+5）</button>
+<div class="card">
+🛒 商店
+<button onclick="buy('wood')">🌲 伐木場</button>
+<button onclick="buy('stone')">⛏ 採石場</button>
+<button onclick="buy('food')">🌾 農場</button>
+<button onclick="buy('score')">🏪 市集</button>
+<button onclick="buy('castle')">🏯 城堡</button>
+</div>
 
+<div class="card">
+🏆 排行
+<div id="rank"></div>
 </div>
 
 <script>
 
-let state={
-  wood:0,
-  stone:0,
-  food:0,
-  score:0,
-  buildings:[]
-};
+let players = JSON.parse(localStorage.getItem("game")) || [
+{name:"玩家一",wood:0,stone:0,food:0,score:0,b:[]},
+{name:"玩家二",wood:0,stone:0,food:0,score:0,b:[]},
+{name:"玩家三",wood:0,stone:0,food:0,score:0,b:[]}
+];
 
-function update(){
-  wood.innerText=state.wood;
-  stone.innerText=state.stone;
-  food.innerText=state.food;
-  score.innerText=state.score;
+let turn = 0;
 
-  buildings.innerHTML = state.buildings.length
-    ? state.buildings.join("<br>")
-    : "（尚未擁有）";
+function save(){
+localStorage.setItem("game", JSON.stringify(players));
 }
 
-function rollDice(){
-  const dice = Math.floor(Math.random()*6)+1;
-  document.getElementById("dice-result").innerText = "骰到："+dice;
+function render(){
+let p = players[turn];
 
-  state.buildings.forEach(b=>{
-    if(b==="🌲伐木場" && dice===2){
-      state.wood+=2;
-    }
-    if(b==="⛏️採石場" && dice===3){
-      state.stone+=2;
-    }
-    if(b==="🌾農場" && dice===4){
-      state.food+=2;
-    }
-    if(b==="🏪市集" && dice===5){
-      state.score+=5;
-    }
-  });
+current.innerText = p.name;
+wood.innerText = p.wood;
+stone.innerText = p.stone;
+food.innerText = p.food;
+score.innerText = p.score;
+buildings.innerHTML = p.b.join("<br>") || "無";
 
-  update();
+let sorted=[...players].sort((a,b)=>b.score-a.score);
+rank.innerHTML = sorted.map((p,i)=>`${i+1}. ${p.name} (${p.score})`).join("<br>");
+
+save();
 }
 
-function buy(type){
-  if(type==="woodFarm"){
-    state.buildings.push("🌲伐木場");
-  }
-  if(type==="stoneMine"){
-    state.buildings.push("⛏️採石場");
-  }
-  if(type==="farm"){
-    state.buildings.push("🌾農場");
-  }
-  if(type==="market"){
-    state.buildings.push("🏪市集");
-  }
-  update();
+function nextPlayer(){
+turn = (turn+1) % players.length;
+render();
 }
 
-update();
+function buy(t){
+players[turn].b.push(t);
+render();
+}
+
+function roll(){
+let p = players[turn];
+
+let sum=0,even=0,odd=0,ones=0,blue=0,red1=0;
+dice.innerHTML="";
+let logTxt="";
+
+for(let i=0;i<12;i++){
+let v=Math.floor(Math.random()*6)+1;
+let c=Math.random()>0.5?'red':'blue';
+
+sum+=v;
+if(v%2===0)even++; else odd++;
+if(v===1)ones++;
+if(c==='blue')blue++;
+if(c==='red' && v===1)red1++;
+
+let d=document.createElement("div");
+d.className="d "+c;
+d.innerText=v;
+dice.appendChild(d);
+}
+
+// 基本
+if(sum%2===0){p.score+=10;logTxt+="偶數+10<br>";}
+else{p.score-=5;logTxt+="奇數-5<br>";}
+
+// 條件
+if(ones>=2){p.wood+=3;logTxt+="兩個1→木+3<br>";}
+if(even>=3){p.stone+=3;logTxt+="偶數多→石+3<br>";}
+if(odd>=3){p.food+=3;logTxt+="奇數多→食+3<br>";}
+if(blue>=2){p.score+=15;logTxt+="藍色+15<br>";}
+
+// 偷分
+if(red1>=2){
+let target = players.filter(x=>x!==p).sort((a,b)=>b.score-a.score)[0];
+if(target){
+target.score-=10;
+p.score+=10;
+logTxt+="偷第一名10分<br>";
+}
+}
+
+// 極端
+if(even===12){p.score+=50;logTxt+="全偶數+50<br>";}
+if(odd===12){p.score+=50;logTxt+="全奇數+50<br>";}
+
+// 建築加成
+p.b.forEach(x=>{
+if(x==='wood' && even>=3)p.wood+=2;
+if(x==='stone' && ones>=2)p.stone+=2;
+if(x==='food' && odd>=3)p.food+=2;
+if(x==='score' && blue>=2)p.score+=10;
+if(x==='castle' && (even===12||odd===12))p.score+=30;
+});
+
+log.innerHTML=logTxt;
+
+render();
+}
+
+render();
 
 </script>
+
 </body>
 </html>
