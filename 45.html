@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>骰子城市（簡易版）</title>
+<style>
+body{
+  font-family: sans-serif;
+  background:#f5f5f5;
+  padding:15px;
+}
+.card{
+  background:#fff;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:12px;
+}
+button{
+  padding:12px;
+  border:none;
+  border-radius:8px;
+  background:#1D9E75;
+  color:#fff;
+  font-size:16px;
+  width:100%;
+}
+.shop button{
+  margin-top:6px;
+}
+</style>
+</head>
+<body>
+
+<h2>🎲 骰子城市（手機版）</h2>
+
+<div class="card">
+  <h3>資源</h3>
+  🪵 木材：<span id="wood">0</span><br>
+  🪨 石材：<span id="stone">0</span><br>
+  🌽 食物：<span id="food">0</span><br>
+  ⭐ 積分：<span id="score">0</span>
+</div>
+
+<div class="card">
+  <h3>🎲 擲骰</h3>
+  <button onclick="rollDice()">擲骰子</button>
+  <p id="dice-result"></p>
+</div>
+
+<div class="card">
+  <h3>🏗️ 我的建築</h3>
+  <div id="buildings">（尚未擁有）</div>
+</div>
+
+<div class="card shop">
+  <h3>🛒 商店</h3>
+
+  <button onclick="buy('woodFarm')">🌲 伐木場（骰到2 → 木+2）</button>
+  <button onclick="buy('stoneMine')">⛏️ 採石場（骰到3 → 石+2）</button>
+  <button onclick="buy('farm')">🌾 農場（骰到4 → 食+2）</button>
+  <button onclick="buy('market')">🏪 市集（骰到5 → 分+5）</button>
+
+</div>
+
+<script>
+
+let state={
+  wood:0,
+  stone:0,
+  food:0,
+  score:0,
+  buildings:[]
+};
+
+function update(){
+  wood.innerText=state.wood;
+  stone.innerText=state.stone;
+  food.innerText=state.food;
+  score.innerText=state.score;
+
+  buildings.innerHTML = state.buildings.length
+    ? state.buildings.join("<br>")
+    : "（尚未擁有）";
+}
+
+function rollDice(){
+  const dice = Math.floor(Math.random()*6)+1;
+  document.getElementById("dice-result").innerText = "骰到："+dice;
+
+  state.buildings.forEach(b=>{
+    if(b==="🌲伐木場" && dice===2){
+      state.wood+=2;
+    }
+    if(b==="⛏️採石場" && dice===3){
+      state.stone+=2;
+    }
+    if(b==="🌾農場" && dice===4){
+      state.food+=2;
+    }
+    if(b==="🏪市集" && dice===5){
+      state.score+=5;
+    }
+  });
+
+  update();
+}
+
+function buy(type){
+  if(type==="woodFarm"){
+    state.buildings.push("🌲伐木場");
+  }
+  if(type==="stoneMine"){
+    state.buildings.push("⛏️採石場");
+  }
+  if(type==="farm"){
+    state.buildings.push("🌾農場");
+  }
+  if(type==="market"){
+    state.buildings.push("🏪市集");
+  }
+  update();
+}
+
+update();
+
+</script>
+</body>
+</html>
