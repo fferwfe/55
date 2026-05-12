@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>注意力測試 + BINGO（單機版）</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;500;700;900&family=Bodoni+Moda:ital,wght@0,400;1,400;1,700&display=swap');
+:root{
+  --bg:#0a0a0f;--bg-card:#15151f;--bg-deep:#0e0e18;
+  --accent:#00ff88;--red:#ff2d55;--blue:#00cfff;--yellow:#ffe600;
+  --purple:#bf5fff;--orange:#ff8c00;--white:#f5f5f7;--gold:#d4a64a;
+  --text-dim:rgba(245,245,247,.5);--text-mid:rgba(245,245,247,.75);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--white);font-family:'Noto Sans TC',sans-serif;min-height:100vh;overflow:hidden;font-weight:500;}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(circle at 20% 10%,rgba(0,255,136,.04) 0%,transparent 40%),
+             radial-gradient(circle at 80% 90%,rgba(0,207,255,.04) 0%,transparent 40%);
+  pointer-events:none;z-index:0;
+}
+
+.app{display:grid;grid-template-columns:1fr 420px;height:100vh;position:relative;z-index:1;}
+.main{padding:24px;display:flex;flex-direction:column;gap:18px;overflow:hidden;}
+.sidebar{background:var(--bg-deep);border-left:1px solid rgba(0,255,136,.15);padding:20px 18px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+
+.header{display:flex;justify-content:space-between;align-items:center;gap:14px;}
+.brand{font-size:24px;font-weight:900;color:var(--accent);text-shadow:0 0 22px rgba(0,255,136,.6);letter-spacing:.04em;line-height:1.2;}
+.brand .eyebrow{font-family:'Bodoni Moda',serif;font-style:italic;font-size:11px;letter-spacing:.35em;color:var(--text-dim);display:block;margin-bottom:3px;font-weight:400;}
+.phase-tag{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:.2em;padding:7px 16px;border:1.5px solid var(--accent);color:var(--accent);background:rgba(0,255,136,.08);}
+
+/* === 設定階段 === */
+.setup-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:30px;}
+.setup-big-title{font-size:54px;font-weight:900;color:var(--accent);text-shadow:0 0 30px rgba(0,255,136,.5);letter-spacing:.02em;text-align:center;}
+.setup-tagline{font-size:18px;color:var(--text-mid);text-align:center;line-height:1.8;font-weight:500;}
+.team-count-picker{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:20px 0;}
+.tcp{width:64px;height:64px;border:2.5px solid;background:transparent;font-family:'Bodoni Moda',serif;font-style:italic;font-size:28px;font-weight:700;cursor:pointer;color:var(--text-mid);border-color:rgba(255,255,255,.2);border-radius:50%;transition:all .15s;}
+.tcp:hover{border-color:var(--accent);color:var(--accent);}
+.tcp.sel{background:var(--accent);color:#000;border-color:var(--accent);box-shadow:0 0 24px var(--accent);}
+.team-names-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;max-width:600px;margin-top:14px;}
+.tn-card{padding:12px 14px;background:var(--bg-card);border-left:5px solid;display:flex;align-items:center;gap:10px;border-radius:0 3px 3px 0;}
+.tn-card .tn-num{font-family:'Bodoni Moda',serif;font-style:italic;font-size:24px;font-weight:700;line-height:1;}
+.tn-card input{flex:1;background:transparent;border:none;border-bottom:1.5px solid rgba(255,255,255,.2);color:#fff;padding:6px 4px;font-family:'Noto Sans TC',sans-serif;font-size:16px;font-weight:700;outline:none;}
+.tn-card input:focus{border-bottom-color:var(--accent);}
+
+/* === 影片區 === */
+.video-wrap{flex:1;background:#000;border:2px solid var(--accent);position:relative;overflow:hidden;box-shadow:0 0 50px rgba(0,255,136,.18);min-height:0;border-radius:2px;}
+.video-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.7) 100%);pointer-events:none;z-index:10;}
+#noise{position:absolute;inset:0;opacity:0;z-index:5;pointer-events:none;}
+.flash-item{position:absolute;font-family:'Share Tech Mono',monospace;font-weight:900;opacity:0;user-select:none;z-index:2;transform:translate(-50%,-50%);}
+.overlay-screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;padding:24px;gap:18px;}
+.overlay-screen.show{display:flex;}
+.big-title{font-size:46px;font-weight:900;color:var(--accent);text-shadow:0 0 32px rgba(0,255,136,.7);letter-spacing:.04em;text-align:center;line-height:1.2;}
+.sub{font-size:15px;color:var(--text-mid);text-align:center;line-height:1.8;font-weight:500;}
+
+.question-box{padding:18px 30px;text-align:center;max-width:95%;}
+.q-num{font-family:'Bodoni Moda',serif;font-style:italic;font-size:16px;color:var(--gold);letter-spacing:.3em;margin-bottom:14px;font-weight:700;}
+.q-text{font-size:36px;font-weight:900;color:var(--yellow);line-height:1.4;margin-bottom:10px;text-shadow:0 0 20px rgba(255,230,0,.45);}
+.q-hint{font-size:14px;color:var(--text-mid);font-weight:500;margin-bottom:14px;}
+.q-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px;max-width:700px;}
+.q-opt{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.25);padding:12px 16px;font-size:16px;color:#fff;font-weight:700;border-radius:2px;}
+.q-opt.is-answer{background:rgba(0,255,136,.18);border-color:var(--accent);color:var(--accent);box-shadow:0 0 14px rgba(0,255,136,.4);}
+
+/* 主控專屬：答案顯示區 */
+.answer-banner{background:linear-gradient(135deg,rgba(0,255,136,.15),rgba(0,255,136,.05));border:2px solid var(--accent);padding:14px 20px;margin-top:14px;text-align:center;border-radius:3px;max-width:700px;width:100%;}
+.answer-banner .lbl{font-family:'Bodoni Moda',serif;font-style:italic;font-size:11px;color:var(--gold);letter-spacing:.3em;margin-bottom:5px;font-weight:700;}
+.answer-banner .ans{font-size:22px;font-weight:900;color:var(--accent);line-height:1.4;}
+
+/* === BINGO play === */
+.bingo-play{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:20px;min-height:0;}
+.bp-left{display:flex;flex-direction:column;gap:14px;min-height:0;}
+.bp-right{display:flex;flex-direction:column;gap:14px;min-height:0;}
+
+.current-num-card{flex:1;background:linear-gradient(135deg,#1a1612,#0e0c0a);border:3px solid var(--yellow);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;min-height:0;border-radius:4px;box-shadow:0 0 40px rgba(255,230,0,.15);}
+.cn-tag{font-family:'Bodoni Moda',serif;font-style:italic;font-size:14px;letter-spacing:.35em;color:var(--gold);margin-bottom:10px;font-weight:700;}
+.cn-num{font-family:'Bodoni Moda',serif;font-style:italic;font-size:clamp(160px,22vw,320px);font-weight:700;color:var(--yellow);text-shadow:0 0 70px var(--yellow);line-height:1;animation:numPulse .6s ease-out;}
+@keyframes numPulse{0%{transform:scale(.3);opacity:0;}60%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}
+.cn-err{font-size:24px;font-weight:900;color:#fff;margin-top:18px;letter-spacing:.02em;}
+.cn-divider{width:60px;height:1.5px;background:var(--gold);margin:14px auto;}
+.cn-task{font-size:18px;color:var(--yellow);padding:0 18px;font-weight:700;line-height:1.5;}
+.cn-empty{color:var(--text-dim);font-size:16px;font-weight:500;}
+
+.drawn-section{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);padding:16px;min-height:0;display:flex;flex-direction:column;border-radius:4px;}
+.drawn-section h4{font-family:'Bodoni Moda',serif;font-style:italic;font-size:14px;letter-spacing:.3em;color:var(--accent);margin-bottom:12px;text-transform:uppercase;font-weight:700;}
+.drawn-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;}
+.drawn-cell{aspect-ratio:1;border:1.5px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-family:'Bodoni Moda',serif;font-style:italic;font-size:clamp(20px,2.4vw,28px);color:var(--text-dim);font-weight:700;background:var(--bg-card);border-radius:3px;cursor:pointer;transition:all .15s;}
+.drawn-cell:hover{border-color:var(--accent);transform:scale(1.05);}
+.drawn-cell.drawn{background:var(--yellow);color:#000;box-shadow:0 0 12px rgba(255,230,0,.6);border-color:var(--yellow);}
+.drawn-cell.drawn:hover{transform:none;border-color:var(--yellow);}
+.drawn-cell.drawn.latest{animation:numFlash 1s;}
+@keyframes numFlash{0%,100%{box-shadow:0 0 12px rgba(255,230,0,.6);}50%{box-shadow:0 0 30px var(--yellow),0 0 60px rgba(255,230,0,.8);transform:scale(1.1);}}
+
+/* 主控側邊欄 */
+.sidebar h3{font-family:'Bodoni Moda',serif;font-style:italic;font-size:14px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid rgba(0,255,136,.25);font-weight:700;}
+
+/* 各組計分區 */
+.teams-panel{display:flex;flex-direction:column;gap:8px;}
+.tp-row{padding:12px 14px;background:var(--bg-card);border-left:5px solid;border-radius:0 3px 3px 0;}
+.tp-row.bingo-won{background:linear-gradient(90deg,rgba(255,230,0,.18),transparent);}
+.tp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
+.tp-name{flex:1;font-size:17px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;gap:6px;min-width:0;}
+.tp-name input{flex:1;background:transparent;border:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;outline:none;padding:2px 0;min-width:0;}
+.tp-name input:focus{border-bottom:1px solid currentColor;}
+.tp-score{font-family:'Bodoni Moda',serif;font-style:italic;font-size:32px;font-weight:700;line-height:1;}
+.tp-actions{display:flex;gap:5px;flex-wrap:wrap;}
+.tp-btn{flex:1;min-width:46px;padding:8px 4px;background:transparent;border:1.5px solid;font-family:'Share Tech Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:.03em;transition:all .15s;border-radius:2px;font-weight:700;text-align:center;}
+.tp-btn.correct{border-color:var(--accent);color:var(--accent);}
+.tp-btn.correct:hover{background:var(--accent);color:#000;}
+.tp-btn.wrong{border-color:var(--red);color:var(--red);}
+.tp-btn.wrong:hover{background:var(--red);color:#000;}
+.tp-btn.bingo{border-color:var(--yellow);color:var(--yellow);}
+.tp-btn.bingo:hover,.tp-btn.bingo.on{background:var(--yellow);color:#000;}
+.tp-btn.plus{border-color:rgba(255,255,255,.3);color:var(--text-mid);font-size:13px;}
+.tp-btn.plus:hover{border-color:var(--accent);color:var(--accent);}
+
+.controls{display:flex;flex-direction:column;gap:8px;}
+.btn{background:transparent;border:1.5px solid var(--accent);color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:12px;padding:10px 14px;cursor:pointer;letter-spacing:.15em;transition:all .15s;text-transform:uppercase;font-weight:700;border-radius:2px;}
+.btn:hover{background:var(--accent);color:#000;box-shadow:0 0 16px var(--accent);}
+.btn.danger{border-color:var(--red);color:var(--red);}
+.btn.danger:hover{background:var(--red);color:#000;}
+.btn.gold{border-color:var(--gold);color:var(--gold);}
+.btn.gold:hover{background:var(--gold);color:#000;}
+.btn.big{padding:14px 18px;font-size:14px;}
+.btn:disabled{opacity:.3;cursor:not-allowed;}
+
+/* === 慶祝 === */
+.celebration{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;align-items:center;justify-content:center;z-index:9998;opacity:0;transition:opacity .5s;}
+.celebration.show{display:flex;opacity:1;}
+.celebration-content{text-align:center;animation:scaleIn .6s cubic-bezier(.34,1.56,.64,1);padding:0 24px;}
+@keyframes scaleIn{0%{transform:scale(.5);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.celebration h1{font-family:'Bodoni Moda',serif;font-style:italic;font-size:160px;font-weight:700;color:var(--gold);text-shadow:0 0 70px var(--gold);letter-spacing:.04em;line-height:1;}
+.celebration .winner{font-size:42px;font-weight:900;margin-top:20px;}
+.celebration .rank-info{font-size:22px;color:var(--text-mid);margin-top:14px;line-height:1.8;font-weight:700;}
+
+@keyframes flashIn{0%{opacity:0;transform:translate(-50%,-50%) scale(1.5);}15%{opacity:1;transform:translate(-50%,-50%) scale(1);}75%{opacity:1;transform:translate(-50%,-50%) scale(1);}100%{opacity:0;transform:translate(-50%,-50%) scale(.85);}}
+
+/* === Modal === */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--bg-card);border:2px solid var(--accent);padding:28px;max-width:820px;width:100%;max-height:90vh;overflow-y:auto;border-radius:4px;box-shadow:0 0 60px rgba(0,255,136,.2);}
+.modal-title{font-family:'Bodoni Moda',serif;font-style:italic;font-size:14px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:8px;font-weight:700;}
+.modal-h{font-size:26px;font-weight:900;margin-bottom:20px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-mid);margin-bottom:7px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;}
+.field textarea,.field input{width:100%;padding:12px 14px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.25);color:#fff;font-family:'Noto Sans TC',sans-serif;font-size:16px;font-weight:700;outline:none;border-radius:3px;line-height:1.5;}
+.field textarea{min-height:70px;resize:vertical;}
+.field textarea:focus,.field input:focus{border-color:var(--accent);background:rgba(0,255,136,.05);}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
+.bingo-edit-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.bingo-edit-cell{padding:10px;background:#1a1612;border:1.5px solid rgba(255,255,255,.18);cursor:pointer;text-align:center;min-height:90px;display:flex;flex-direction:column;justify-content:center;gap:5px;border-radius:3px;transition:all .15s;}
+.bingo-edit-cell:hover{border-color:var(--accent);background:rgba(0,255,136,.05);}
+.bingo-edit-cell .ec-num{font-family:'Bodoni Moda',serif;font-style:italic;font-size:16px;color:var(--gold);font-weight:700;}
+.bingo-edit-cell .ec-q{font-size:11px;font-weight:900;color:#fff;line-height:1.3;}
+.bingo-edit-cell .ec-t{font-size:10px;color:rgba(255,230,0,.85);line-height:1.3;font-weight:700;}
+
+.toast{position:fixed;top:40px;left:50%;transform:translateX(-50%) translateY(-100px);background:rgba(0,0,0,.95);border:2px solid var(--accent);padding:14px 24px;font-size:15px;font-weight:700;color:var(--accent);z-index:9000;transition:transform .3s;border-radius:3px;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="main">
+    <div class="header">
+      <div class="brand">
+        <span class="eyebrow">Offline Mode · Attention &amp; Bingo</span>
+        注意力挑戰 + 25 號碼 BINGO
+      </div>
+      <div class="phase-tag" id="phaseTag">設定</div>
+    </div>
+
+    <!-- 設定階段 -->
+    <div class="setup-stage" id="setupStage">
+      <div>
+        <div class="setup-big-title">線下分組賽</div>
+        <div class="setup-tagline" style="margin-top:14px;">主控由你掌控全場<br>各組舉手回答，你按鈕加分；BINGO 用紙本玩，看大螢幕號碼自己劃</div>
+      </div>
+      <div>
+        <div style="font-size:14px;color:var(--text-mid);text-align:center;margin-bottom:10px;letter-spacing:.1em;font-weight:700;">選擇組數</div>
+        <div class="team-count-picker" id="teamCountPicker"></div>
+      </div>
+      <div style="width:100%;max-width:600px;">
+        <div style="font-size:13px;color:var(--text-mid);text-align:center;margin-bottom:8px;font-weight:500;">可自訂組別名稱（可省略）：</div>
+        <div class="team-names-grid" id="teamNamesGrid"></div>
+      </div>
+      <button class="btn big" style="font-size:16px;padding:16px 40px;" onclick="startGame()">▶ 開始遊戲</button>
+    </div>
+
+    <!-- 影片 + 答題 -->
+    <div class="video-wrap" id="videoWrap" style="display:none;">
+      <div id="noise"></div>
+      <div class="overlay-screen" id="quizScreen">
+        <div class="question-box">
+          <div class="q-num" id="qNum">QUESTION 1 / 8</div>
+          <div class="q-text" id="qText">準備中...</div>
+          <div class="q-hint" id="qHint"></div>
+          <div class="q-options" id="qOptions"></div>
+          <div class="answer-banner" id="answerBanner" style="display:none;">
+            <div class="lbl">— ANSWER (僅主控可見) —</div>
+            <div class="ans" id="answerText"></div>
+          </div>
+        </div>
+      </div>
+      <div class="overlay-screen" id="videoOverScreen">
+        <div class="big-title">影片播放完畢</div>
+        <div class="sub">準備開始答題！</div>
+      </div>
+      <div class="overlay-screen" id="quizResultScreen">
+        <div class="big-title" style="color:var(--gold);text-shadow:0 0 32px rgba(212,166,74,.7);">第一階段結算</div>
+        <div id="quizResultBoard" style="display:flex;gap:14px;margin-top:16px;flex-wrap:wrap;justify-content:center;"></div>
+        <div class="sub" style="margin-top:14px;">按右側「進入 BINGO」開始第二階段</div>
+      </div>
+    </div>
+
+    <!-- BINGO -->
+    <div class="bingo-play" id="bingoPlay" style="display:none;">
+      <div class="bp-left">
+        <div class="current-num-card" id="currentNumCard">
+          <div class="cn-tag">CURRENT NUMBER</div>
+          <div class="cn-num" id="cnNum">—</div>
+          <div class="cn-err" id="cnErr"></div>
+          <div class="cn-divider"></div>
+          <div class="cn-task" id="cnTask">點右側「🎲 抽下一號」開始遊戲</div>
+        </div>
+      </div>
+      <div class="bp-right">
+        <div class="drawn-section">
+          <h4>號碼盤（已抽 <span id="drawnCount">0</span> / 25）</h4>
+          <div class="drawn-grid" id="drawnGrid"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-mid);padding:0 4px;text-align:center;letter-spacing:.05em;line-height:1.6;font-weight:500;">
+          💡 點任一格可手動切換已抽/未抽（救援用）
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 側邊欄 -->
+  <div class="sidebar" id="sidebar">
+    <h3>各組計分</h3>
+    <div class="teams-panel" id="teamsPanel"></div>
+
+    <h3 style="margin-top:8px;">主控</h3>
+    <div class="controls" id="phaseControls"></div>
+
+    <h3 style="margin-top:8px;">其他</h3>
+    <div class="controls">
+      <button class="btn gold" id="btnEditBingo">✎ 編輯 25 個任務</button>
+      <button class="btn danger" onclick="resetAll()">⟲ 重置整場遊戲</button>
+    </div>
+  </div>
+</div>
+
+<div class="celebration" id="celebration">
+  <div class="celebration-content">
+    <h1 id="celebrationTitle">BINGO!</h1>
+    <div class="winner" id="winnerText"></div>
+    <div class="rank-info" id="rankInfo"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="bingoOverviewModal">
+  <div class="modal-box">
+    <div class="modal-title">Bingo Items Editor</div>
+    <div class="modal-h">25 個任務內容（號碼 1~25）</div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:14px;font-weight:500;">點任一格編輯。每個號碼對應一個「常見錯誤」+「任務」。</div>
+    <div class="bingo-edit-grid" id="bingoEditGrid"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn small" style="padding:7px 11px;font-size:11px;" onclick="importJSON()">📂 匯入</button>
+        <button class="btn small" style="padding:7px 11px;font-size:11px;" onclick="exportJSON()">💾 匯出</button>
+      </div>
+      <button class="btn" onclick="closeOverview()">關閉</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+  </div>
+</div>
+
+<div class="modal-overlay" id="cellEditModal">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-title">Edit Number Task</div>
+    <div class="modal-h">編輯號碼 <span id="editCellNum" style="color:var(--accent);">01</span></div>
+    <div class="field">
+      <label>常見的錯</label>
+      <textarea id="editCellQ"></textarea>
+    </div>
+    <div class="field">
+      <label>對應任務</label>
+      <textarea id="editCellT"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeEditCell()">取消</button>
+      <button class="btn" style="border-color:var(--accent);" onclick="saveEditCell()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ 資料 ============
+var TEAM_COLORS = ['#ff2d55','#00cfff','#ffe600','#00ff88','#bf5fff','#ff8c00','#00ff88','#ff2d55'];
+var TEAM_DEFAULTS = ['紅隊','藍隊','黃隊','綠隊','紫隊','橘隊','5 號隊','6 號隊'];
+
+var QUESTIONS = [
+  { type:'number', q:'影片中數字共出現幾次？', hint:'只算阿拉伯數字', answer:10 },
+  { type:'number', q:'所有數字加起來總和是多少？', hint:'23+7+51+9+14+3+28+6+4+2', answer:147 },
+  { type:'multi',  q:'哪些文字有出現過？（可多選）',
+    options:['FOCUS','ALERT','FLASH','CRASH','DREAM','ERROR','記住我','資料流','完成','開始'],
+    answer:['FOCUS','ALERT','FLASH','記住我','資料流','完成'] },
+  { type:'number', q:'文字（非數字）共出現幾次？', hint:'', answer:6 },
+  { type:'multi',  q:'哪些顏色出現過？（可多選）',
+    options:['綠色','黃色','紅色','藍色','紫色','橘色','白色','粉色'],
+    answer:['綠色','黃色','紅色','藍色','紫色','橘色'] },
+  { type:'choice', q:'第一個出現的是什麼？', options:['7','23','FOCUS','51'], answer:'23' },
+  { type:'choice', q:'第三個出現的是什麼？', hint:'按時間先後順序', options:['FOCUS','51','7','9'], answer:'7' },
+  { type:'choice', q:'最後一個出現的是什麼？', options:['完成','4','2','FLASH'], answer:'2' }
+];
+
+var DEFAULT_BINGO_ITEMS = [
+  { q:'把忙碌當成有產出', t:'今天空出 30 分鐘，什麼都不做' },
+  { q:'用滑手機紓壓', t:'把手機放遠處，深呼吸 10 次' },
+  { q:'想太多卻沒開始', t:'選一件事，立刻做 5 分鐘' },
+  { q:'對自己太苛刻', t:'寫下 3 個自己的優點' },
+  { q:'熬夜以為賺到時間', t:'今晚提早 30 分鐘上床' },
+  { q:'用比較換來焦慮', t:'取消追蹤一個讓你焦慮的帳號' },
+  { q:'答應不想做的事', t:'練習一次禮貌地拒絕' },
+  { q:'邊吃飯邊滑手機', t:'下一餐放下手機，專心吃飯' },
+  { q:'等心情好才行動', t:'先做 2 分鐘，等心情趕上你' },
+  { q:'壓力來才想到喝水', t:'現在就喝一杯水' },
+  { q:'報復性追劇', t:'今晚提前關掉螢幕 30 分鐘' },
+  { q:'永遠在回訊息', t:'設一個免打擾時段 90 分鐘' },
+  { q:'不敢開口求助', t:'向一個人說「我需要幫忙」' },
+  { q:'把感謝放心裡', t:'傳訊息謝謝一個人' },
+  { q:'忽略身體訊號', t:'起身伸展 3 分鐘' },
+  { q:'預支未來的煩惱', t:'寫下擔心的事，圈出能控制的' },
+  { q:'用購物填補空虛', t:'把購物車放置 24 小時再決定' },
+  { q:'完美主義拖延', t:'交出一個「夠好」的版本' },
+  { q:'整天不曬太陽', t:'出門走 10 分鐘，看天空' },
+  { q:'用咖啡因撐過一切', t:'今天多喝一杯白開水代替' },
+  { q:'把自己排在最後', t:'做一件只為自己開心的小事' },
+  { q:'硬撐不肯休息', t:'閉眼休息 5 分鐘，什麼都不做' },
+  { q:'情緒上來就壓抑', t:'對自己說：「這樣感覺很正常」' },
+  { q:'目標訂得太大', t:'把今天的目標砍半' },
+  { q:'忘了給自己肯定', t:'寫下今天做得好的 1 件事' }
+];
+
+var BINGO_ITEMS = JSON.parse(JSON.stringify(DEFAULT_BINGO_ITEMS));
+
+var CL={green:'#00ff88',yellow:'#ffe600',red:'#ff2d55',blue:'#00cfff',purple:'#bf5fff',orange:'#ff8c00'};
+var FLASH_ITEMS=[
+  {t:500,dur:550,text:'23',size:100,color:CL.green,x:50,y:45},
+  {t:1100,dur:650,text:'FOCUS',size:60,color:CL.yellow,x:50,y:22},
+  {t:1800,dur:480,text:'7',size:120,color:CL.yellow,x:24,y:38},
+  {t:2400,dur:400,text:'51',size:78,color:CL.red,x:72,y:62},
+  {t:3200,dur:600,text:'記住我',size:52,color:CL.blue,x:38,y:72},
+  {t:4000,dur:680,text:'9',size:130,color:CL.blue,x:50,y:50},
+  {t:5000,dur:500,text:'ALERT',size:66,color:CL.red,x:58,y:28},
+  {t:6000,dur:520,text:'14',size:88,color:CL.purple,x:28,y:55},
+  {t:7000,dur:560,text:'3',size:110,color:CL.green,x:68,y:28},
+  {t:8200,dur:600,text:'資料流',size:50,color:CL.orange,x:30,y:40},
+  {t:9500,dur:440,text:'28',size:80,color:CL.yellow,x:46,y:66},
+  {t:11000,dur:540,text:'6',size:125,color:CL.blue,x:55,y:42},
+  {t:12500,dur:580,text:'FLASH',size:62,color:CL.purple,x:62,y:32},
+  {t:14000,dur:500,text:'4',size:94,color:CL.orange,x:34,y:52},
+  {t:16500,dur:700,text:'完成',size:68,color:CL.green,x:50,y:50},
+  {t:18500,dur:580,text:'2',size:112,color:CL.red,x:60,y:56}
+];
+var VIDEO_MS = 20000;
+
+// ============ 狀態 ============
+var state = {
+  phase: 'setup', // setup | quiz | result | bingo | finished
+  teamCount: 4,
+  teams: [],  // [{name, score, bingo: rank|null}]
+  quiz: { currentQ: 0, answered: false, teamAnswered: {} }, // teamAnswered: {teamId: 'correct'|'wrong'}
+  bingo: { drawn: [], currentNumber: null, winners: [] }
+};
+
+var videoState='idle',videoElapsed=0,videoLastTick=null,videoRaf=null,pendingItems=[],noiseTimer=null;
+var $ = function(id){return document.getElementById(id);};
+
+// ============ 設定階段 ============
+function renderSetup(){
+  // 組數選擇器
+  var html = '';
+  for(var n=2; n<=8; n++){
+    var cls = 'tcp' + (n === state.teamCount ? ' sel' : '');
+    html += '<button class="'+cls+'" onclick="setTeamCount('+n+')">'+n+'</button>';
+  }
+  $('teamCountPicker').innerHTML = html;
+  // 組名輸入
+  renderTeamNamesGrid();
+}
+
+window.setTeamCount = function(n){
+  state.teamCount = n;
+  // 補齊 teams 陣列
+  while(state.teams.length < n){
+    var i = state.teams.length;
+    state.teams.push({ name: TEAM_DEFAULTS[i], score: 0, bingo: null });
+  }
+  while(state.teams.length > n) state.teams.pop();
+  renderSetup();
+};
+
+function renderTeamNamesGrid(){
+  var html = '';
+  for(var i=0; i<state.teamCount; i++){
+    var color = TEAM_COLORS[i];
+    html += '<div class="tn-card" style="border-color:'+color+';">'
+      + '<div class="tn-num" style="color:'+color+';">'+(i+1)+'</div>'
+      + '<input type="text" maxlength="12" placeholder="'+TEAM_DEFAULTS[i]+'" value="'+escapeAttr(state.teams[i].name === TEAM_DEFAULTS[i] ? '' : state.teams[i].name)+'" oninput="updateTeamName('+i+', this.value)" style="color:'+color+';">'
+      + '</div>';
+  }
+  $('teamNamesGrid').innerHTML = html;
+}
+
+window.updateTeamName = function(i, v){
+  v = v.trim();
+  state.teams[i].name = v || TEAM_DEFAULTS[i];
+};
+
+window.startGame = function(){
+  state.phase = 'quiz';
+  state.quiz.currentQ = 0;
+  state.quiz.answered = false;
+  state.quiz.teamAnswered = {};
+  state.teams.forEach(function(t){ t.score = 0; t.bingo = null; });
+  switchToVideo();
+  startVideo();
+  renderAll();
+};
+
+// ============ 影片 ============
+function switchToVideo(){
+  $('setupStage').style.display = 'none';
+  $('videoWrap').style.display = 'block';
+  $('bingoPlay').style.display = 'none';
+}
+
+function startNoise(){
+  if(noiseTimer)return;
+  noiseTimer=setInterval(function(){
+    $('noise').style.opacity = Math.random()>.85 ? (Math.random()*.13).toString() : '0';
+  },80);
+}
+function stopNoise(){clearInterval(noiseTimer);noiseTimer=null;$('noise').style.opacity='0';}
+
+function flashItem(item){
+  var el=document.createElement('div');
+  el.className='flash-item';
+  el.textContent=item.text;
+  el.style.fontSize=item.size+'px';
+  el.style.color=item.color;
+  el.style.textShadow='0 0 24px '+item.color+',0 0 48px '+item.color;
+  el.style.left=item.x+'%';
+  el.style.top=item.y+'%';
+  el.style.animation='flashIn '+item.dur+'ms ease-out forwards';
+  $('videoWrap').appendChild(el);
+  setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},item.dur+80);
+}
+
+function tickVideo(ts){
+  if(videoState!=='playing')return;
+  if(videoLastTick===null)videoLastTick=ts;
+  var delta=ts-videoLastTick;videoLastTick=ts;
+  videoElapsed=Math.min(videoElapsed+delta,VIDEO_MS);
+  pendingItems=pendingItems.filter(function(item){
+    if(videoElapsed>=item.t){flashItem(item);return false;}
+    return true;
+  });
+  if(videoElapsed>=VIDEO_MS){finishVideo();return;}
+  videoRaf=requestAnimationFrame(tickVideo);
+}
+
+function startVideo(){
+  document.querySelectorAll('.flash-item').forEach(function(el){el.remove();});
+  $('quizScreen').classList.remove('show');
+  $('videoOverScreen').classList.remove('show');
+  $('quizResultScreen').classList.remove('show');
+  videoElapsed=0;
+  pendingItems=FLASH_ITEMS.slice();
+  videoState='playing';
+  videoLastTick=null;
+  startNoise();
+  videoRaf=requestAnimationFrame(tickVideo);
+}
+
+function finishVideo(){
+  videoState='ended';
+  stopNoise();
+  cancelAnimationFrame(videoRaf);
+  $('videoOverScreen').classList.add('show');
+  setTimeout(function(){
+    $('videoOverScreen').classList.remove('show');
+    $('quizScreen').classList.add('show');
+    renderQuiz();
+  },1500);
+}
+
+// ============ 答題階段 ============
+function renderQuiz(){
+  var q = QUESTIONS[state.quiz.currentQ];
+  if(!q){ goToResult(); return; }
+  $('qNum').textContent = 'QUESTION '+(state.quiz.currentQ+1)+' / '+QUESTIONS.length;
+  $('qText').textContent = q.q;
+  $('qHint').textContent = q.hint || '';
+
+  var optHtml = '';
+  if(q.type === 'choice'){
+    q.options.forEach(function(o){
+      var isAns = (o === q.answer);
+      optHtml += '<div class="q-opt'+(isAns?' is-answer':'')+'">'+escapeHtml(o)+'</div>';
+    });
+  } else if(q.type === 'multi'){
+    q.options.forEach(function(o){
+      var isAns = q.answer.indexOf(o) >= 0;
+      optHtml += '<div class="q-opt'+(isAns?' is-answer':'')+'">'+escapeHtml(o)+'</div>';
+    });
+  } else {
+    optHtml = '<div class="q-opt" style="grid-column:1/-1;color:var(--accent);">數字題</div>';
+  }
+  $('qOptions').innerHTML = optHtml;
+
+  // 答案顯示給主控（在大螢幕上也會看到）
+  var ansText = '';
+  if(q.type === 'number') ansText = q.answer;
+  else if(q.type === 'choice') ansText = q.answer;
+  else if(q.type === 'multi') ansText = q.answer.join('、');
+  $('answerText').textContent = ansText;
+  $('answerBanner').style.display = 'block';
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+window.markQuiz = function(teamId, correct){
+  var alreadyCorrect = Object.values(state.quiz.teamAnswered).filter(function(v){return v==='correct';}).length;
+  if(correct){
+    if(state.quiz.teamAnswered[teamId] === 'correct'){
+      showToast('該組已答對過'); return;
+    }
+    var bonus = Math.max(2, 6 - alreadyCorrect);
+    state.teams[teamId].score += bonus;
+    state.quiz.teamAnswered[teamId] = 'correct';
+    showToast(state.teams[teamId].name + ' 答對！+' + bonus + ' 分');
+  } else {
+    state.quiz.teamAnswered[teamId] = 'wrong';
+    showToast(state.teams[teamId].name + ' 答錯');
+  }
+  renderControls();
+  renderTeamsPanel();
+};
+
+window.nextQuestion = function(){
+  // 若沒有人答對，提示重播或仍可跳題
+  var anyCorrect = Object.values(state.quiz.teamAnswered).some(function(v){return v==='correct';});
+  if(!anyCorrect){
+    if(!confirm('還沒有組答對，確定要進下一題嗎？\n（建議按「重播影片」讓他們再看一次）')) return;
+  }
+  state.quiz.currentQ++;
+  state.quiz.teamAnswered = {};
+  if(state.quiz.currentQ >= QUESTIONS.length){
+    goToResult();
+  } else {
+    renderQuiz();
+    renderControls();
+    renderTeamsPanel();
+  }
+};
+
+window.replayVideoBtn = function(){
+  state.quiz.teamAnswered = {};
+  $('quizScreen').classList.remove('show');
+  startVideo();
+  renderControls();
+  renderTeamsPanel();
+};
+
+function goToResult(){
+  state.phase = 'result';
+  $('quizScreen').classList.remove('show');
+  // 顯示結算
+  var teams = state.teams.slice().map(function(t,i){return {t:t,i:i};});
+  teams.sort(function(a,b){return b.t.score - a.t.score;});
+  var html = '';
+  teams.forEach(function(item, rank){
+    var medal = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣'][rank];
+    var color = TEAM_COLORS[item.i];
+    html += '<div style="text-align:center;padding:22px 20px;border:2.5px solid '+color+';background:rgba(0,0,0,.5);min-width:140px;border-radius:4px;">'
+      + '<div style="font-size:36px;margin-bottom:6px;">'+medal+'</div>'
+      + '<div style="font-size:18px;font-weight:900;color:'+color+';">'+escapeHtml(item.t.name)+'</div>'
+      + '<div style="font-family:\'Bodoni Moda\',serif;font-style:italic;font-size:48px;font-weight:700;color:'+color+';margin-top:8px;line-height:1;">'+item.t.score+'</div>'
+      + '</div>';
+  });
+  $('quizResultBoard').innerHTML = html;
+  $('quizResultScreen').classList.add('show');
+  renderControls();
+}
+
+window.goToBingo = function(){
+  state.phase = 'bingo';
+  state.bingo = { drawn: [], currentNumber: null, winners: [] };
+  $('videoWrap').style.display = 'none';
+  $('bingoPlay').style.display = 'grid';
+  renderBingo();
+  renderControls();
+  renderTeamsPanel();
+};
+
+// ============ BINGO 階段 ============
+function renderBingo(){
+  var b = state.bingo;
+  if(b.currentNumber){
+    $('cnNum').textContent = b.currentNumber;
+    $('cnNum').style.animation = 'none';
+    void $('cnNum').offsetWidth;
+    $('cnNum').style.animation = 'numPulse .6s ease-out';
+    var item = BINGO_ITEMS[b.currentNumber - 1];
+    $('cnErr').textContent = item ? item.q : '';
+    $('cnTask').textContent = item ? item.t : '';
+    $('cnTask').className = 'cn-task';
+  } else {
+    $('cnNum').textContent = '—';
+    $('cnErr').textContent = '';
+    $('cnTask').textContent = '點右側「🎲 抽下一號」開始遊戲';
+    $('cnTask').className = 'cn-empty';
+  }
+  $('drawnCount').textContent = b.drawn.length;
+  var html = '';
+  for(var n=1; n<=25; n++){
+    var isDrawn = b.drawn.indexOf(n) >= 0;
+    var isLatest = (n === b.currentNumber);
+    var cls = 'drawn-cell';
+    if(isDrawn) cls += ' drawn';
+    if(isLatest) cls += ' latest';
+    html += '<div class="'+cls+'" onclick="toggleDrawn('+n+')">'+n+'</div>';
+  }
+  $('drawnGrid').innerHTML = html;
+}
+
+window.drawNumber = function(){
+  var b = state.bingo;
+  var remaining = [];
+  for(var n=1; n<=25; n++){ if(b.drawn.indexOf(n) < 0) remaining.push(n); }
+  if(remaining.length === 0){ showToast('25 個號碼都抽完了'); return; }
+  var num = remaining[Math.floor(Math.random() * remaining.length)];
+  b.drawn.push(num);
+  b.currentNumber = num;
+  renderBingo();
+};
+
+window.toggleDrawn = function(n){
+  var b = state.bingo;
+  var idx = b.drawn.indexOf(n);
+  if(idx >= 0){
+    b.drawn.splice(idx, 1);
+    if(b.currentNumber === n) b.currentNumber = b.drawn[b.drawn.length-1] || null;
+    showToast('已撤回號碼 '+n);
+  } else {
+    b.drawn.push(n);
+    b.currentNumber = n;
+    showToast('手動標記號碼 '+n);
+  }
+  renderBingo();
+};
+
+window.undraw = function(){
+  var b = state.bingo;
+  if(b.drawn.length === 0) return;
+  var last = b.drawn.pop();
+  b.currentNumber = b.drawn[b.drawn.length-1] || null;
+  showToast('撤回號碼 '+last);
+  renderBingo();
+};
+
+window.markBingo = function(teamId){
+  // 該組宣告 BINGO，記錄名次
+  if(state.teams[teamId].bingo !== null){
+    if(confirm('取消「'+state.teams[teamId].name+'」的 BINGO？')){
+      var rank = state.teams[teamId].bingo;
+      var bonus = [30,20,10,5,3,2,1,1][rank-1] || 1;
+      state.teams[teamId].score -= bonus;
+      state.teams[teamId].bingo = null;
+      // 重新計算其他組的名次
+      state.bingo.winners = state.bingo.winners.filter(function(id){return id !== teamId;});
+    }
+  } else {
+    state.bingo.winners.push(teamId);
+    var rank = state.bingo.winners.length;
+    var bonus = [30,20,10,5,3,2,1,1][rank-1] || 1;
+    state.teams[teamId].score += bonus;
+    state.teams[teamId].bingo = rank;
+    showCelebration(teamId, rank, bonus);
+  }
+  renderTeamsPanel();
+};
+
+window.adjScore = function(teamId, delta){
+  state.teams[teamId].score += delta;
+  if(state.teams[teamId].score < 0) state.teams[teamId].score = 0;
+  renderTeamsPanel();
+};
+
+window.endGame = function(){
+  if(!confirm('結束 BINGO，顯示最終結算？')) return;
+  state.phase = 'finished';
+  showFinalCelebration();
+  renderControls();
+};
+
+// ============ 計分面板 + 控制按鈕 ============
+function renderTeamsPanel(){
+  var html = '';
+  for(var i=0; i<state.teamCount; i++){
+    var t = state.teams[i];
+    var color = TEAM_COLORS[i];
+    var hasBingo = t.bingo !== null;
+    var cls = 'tp-row' + (hasBingo ? ' bingo-won' : '');
+    var rankBadge = hasBingo ? ' 🏆 第'+t.bingo+'名' : '';
+    var qAnsState = state.quiz.teamAnswered[i];
+    var qBadge = qAnsState === 'correct' ? ' ✓' : (qAnsState === 'wrong' ? ' ✗' : '');
+
+    html += '<div class="'+cls+'" style="border-color:'+color+';">'
+      + '<div class="tp-head">'
+      + '<div class="tp-name" style="color:'+color+';"><input type="text" value="'+escapeAttr(t.name)+'" oninput="renameTeam('+i+', this.value)">'+qBadge+rankBadge+'</div>'
+      + '<div class="tp-score" style="color:'+color+';">'+t.score+'</div>'
+      + '</div>'
+      + '<div class="tp-actions">';
+
+    if(state.phase === 'quiz'){
+      html += '<button class="tp-btn correct" onclick="markQuiz('+i+',true)">✓ 答對</button>'
+            + '<button class="tp-btn wrong" onclick="markQuiz('+i+',false)">✗ 答錯</button>';
+    } else if(state.phase === 'bingo'){
+      var bingoCls = 'tp-btn bingo' + (hasBingo ? ' on' : '');
+      html += '<button class="'+bingoCls+'" onclick="markBingo('+i+')">'+(hasBingo?'取消 BINGO':'🏆 宣告 BINGO')+'</button>';
+    }
+    // 通用：加減分
+    html += '<button class="tp-btn plus" onclick="adjScore('+i+',1)">+1</button>'
+          + '<button class="tp-btn plus" onclick="adjScore('+i+',-1)">−1</button>'
+          + '</div></div>';
+  }
+  $('teamsPanel').innerHTML = html;
+}
+
+window.renameTeam = function(i, v){
+  v = v.trim();
+  state.teams[i].name = v || TEAM_DEFAULTS[i];
+};
+
+function renderControls(){
+  var html = '';
+  if(state.phase === 'setup'){
+    // 不需要側邊控制
+  } else if(state.phase === 'quiz'){
+    html = '<button class="btn big" onclick="nextQuestion()">→ 下一題</button>'
+         + '<button class="btn gold" onclick="replayVideoBtn()">🔁 重播影片</button>'
+         + '<button class="btn" onclick="goToResult()">⛳ 直接進結算</button>';
+  } else if(state.phase === 'result'){
+    html = '<button class="btn big" onclick="goToBingo()">▶ 進入 BINGO 第二階段</button>'
+         + '<button class="btn gold" onclick="backToQuiz()">← 回到答題</button>';
+  } else if(state.phase === 'bingo'){
+    html = '<button class="btn big" onclick="drawNumber()" style="font-size:16px;padding:16px;">🎲 抽下一個號碼</button>'
+         + '<button class="btn danger" onclick="undraw()">↶ 撤回上一號</button>'
+         + '<button class="btn gold big" onclick="endGame()">⛳ 結束遊戲 顯示結算</button>';
+  } else if(state.phase === 'finished'){
+    html = '<button class="btn" onclick="$(\'celebration\').classList.add(\'show\');">🏆 再看一次結算</button>';
+  }
+  $('phaseControls').innerHTML = html;
+}
+
+window.backToQuiz = function(){
+  state.phase = 'quiz';
+  state.quiz.currentQ = Math.max(0, state.quiz.currentQ - 1);
+  state.quiz.teamAnswered = {};
+  $('videoWrap').style.display = 'block';
+  $('bingoPlay').style.display = 'none';
+  $('quizResultScreen').classList.remove('show');
+  $('quizScreen').classList.add('show');
+  renderQuiz();
+  renderControls();
+  renderTeamsPanel();
+};
+
+function showCelebration(teamId, rank, bonus){
+  $('celebrationTitle').textContent = 'BINGO!';
+  $('celebrationTitle').style.fontSize = '160px';
+  $('winnerText').textContent = state.teams[teamId].name;
+  $('winnerText').style.color = TEAM_COLORS[teamId];
+  $('rankInfo').textContent = '第 '+rank+' 名連線！  +'+bonus+' 分';
+  $('celebration').classList.add('show');
+  setTimeout(function(){ $('celebration').classList.remove('show'); }, 4500);
+}
+
+function showFinalCelebration(){
+  var teams = state.teams.slice().map(function(t,i){return {t:t,i:i};})
+    .sort(function(a,b){return b.t.score - a.t.score;});
+  $('celebrationTitle').textContent = '遊戲結束';
+  $('celebrationTitle').style.fontSize = '100px';
+  $('winnerText').textContent = '🏆 '+teams[0].t.name+' 冠軍！';
+  $('winnerText').style.color = TEAM_COLORS[teams[0].i];
+  $('rankInfo').innerHTML = teams.map(function(item,i){
+    var medal = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣'][i];
+    return medal + ' ' + escapeHtml(item.t.name) + '：' + item.t.score + ' 分';
+  }).join('<br>');
+  $('celebration').classList.add('show');
+}
+
+// ============ 編輯 25 任務 ============
+var editingCellIdx = -1;
+window.openEditCell = function(idx, ev){
+  if(ev) ev.stopPropagation();
+  editingCellIdx = idx;
+  $('editCellNum').textContent = String(idx+1).padStart(2,'0');
+  $('editCellQ').value = BINGO_ITEMS[idx].q;
+  $('editCellT').value = BINGO_ITEMS[idx].t;
+  $('cellEditModal').classList.add('show');
+  setTimeout(function(){$('editCellQ').focus();}, 100);
+};
+window.closeEditCell = function(){ $('cellEditModal').classList.remove('show'); editingCellIdx = -1; };
+window.saveEditCell = function(){
+  if(editingCellIdx < 0) return;
+  var q = $('editCellQ').value.trim(), t = $('editCellT').value.trim();
+  if(!q || !t){ alert('兩格都要填'); return; }
+  BINGO_ITEMS[editingCellIdx].q = q;
+  BINGO_ITEMS[editingCellIdx].t = t;
+  saveBingoItems();
+  closeEditCell();
+  renderOverviewGrid();
+  if(state.phase === 'bingo') renderBingo();
+};
+window.openOverview = function(){ $('bingoOverviewModal').classList.add('show'); renderOverviewGrid(); };
+window.closeOverview = function(){ $('bingoOverviewModal').classList.remove('show'); };
+
+function renderOverviewGrid(){
+  var html = '';
+  for(var i=0; i<25; i++){
+    var item = BINGO_ITEMS[i];
+    html += '<div class="bingo-edit-cell" onclick="openEditCell('+i+')">'
+      + '<div class="ec-num">N°'+String(i+1).padStart(2,'0')+'</div>'
+      + '<div class="ec-q">'+escapeHtml(item.q||'(空)')+'</div>'
+      + '<div class="ec-t">→ '+escapeHtml(item.t||'(空)')+'</div>'
+      + '</div>';
+  }
+  $('bingoEditGrid').innerHTML = html;
+}
+
+window.exportJSON = function(){
+  var blob = new Blob([JSON.stringify(BINGO_ITEMS, null, 2)], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'bingo-items.json'; a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);}, 1000);
+};
+window.importJSON = function(){ $('importFile').click(); };
+$('importFile').addEventListener('change', function(e){
+  var f = e.target.files[0]; if(!f) return;
+  var r = new FileReader();
+  r.onload = function(ev){
+    try{
+      var items = JSON.parse(ev.target.result);
+      if(!Array.isArray(items)){ alert('格式錯誤'); return; }
+      for(var i=0; i<Math.min(25, items.length); i++){
+        if(items[i] && typeof items[i].q==='string') BINGO_ITEMS[i].q = items[i].q;
+        if(items[i] && typeof items[i].t==='string') BINGO_ITEMS[i].t = items[i].t;
+      }
+      saveBingoItems();
+      renderOverviewGrid();
+      alert('已匯入 '+Math.min(items.length,25)+' 格');
+    }catch(err){ alert('JSON 解析失敗: '+err.message); }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+});
+
+// ============ 存檔 / 重置 ============
+function saveBingoItems(){
+  try{ localStorage.setItem('offlineBingoItems', JSON.stringify(BINGO_ITEMS)); }catch(e){}
+}
+function loadBingoItems(){
+  try{
+    var s = localStorage.getItem('offlineBingoItems');
+    if(s){
+      var arr = JSON.parse(s);
+      if(Array.isArray(arr) && arr.length === 25) BINGO_ITEMS = arr;
+    }
+  }catch(e){}
+}
+
+window.resetAll = function(){
+  if(!confirm('確定要重置整場遊戲？所有分數會歸零，回到設定畫面。\n（任務內容不會清掉）')) return;
+  state = {
+    phase: 'setup',
+    teamCount: state.teamCount,
+    teams: state.teams.map(function(t){return {name:t.name,score:0,bingo:null};}),
+    quiz: { currentQ:0, answered:false, teamAnswered:{} },
+    bingo: { drawn:[], currentNumber:null, winners:[] }
+  };
+  $('setupStage').style.display = 'flex';
+  $('videoWrap').style.display = 'none';
+  $('bingoPlay').style.display = 'none';
+  $('celebration').classList.remove('show');
+  renderAll();
+};
+
+// ============ Toast ============
+function showToast(msg){
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(function(){t.classList.remove('show');}, 1500);
+}
+
+// ============ 統合 ============
+function renderAll(){
+  var phaseMap = {setup:'設定', quiz:'第一階段：影片+答題', result:'第一階段結算', bingo:'第二階段：BINGO 抽號', finished:'遊戲結束'};
+  $('phaseTag').textContent = phaseMap[state.phase] || state.phase;
+  if(state.phase === 'setup'){
+    renderSetup();
+    $('teamsPanel').innerHTML = '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:20px;font-weight:500;line-height:1.7;">設定組數後，每組的計分卡會出現在這</div>';
+  } else {
+    renderTeamsPanel();
+  }
+  renderControls();
+}
+
+// 按鈕綁定
+$('btnEditBingo').onclick = function(){ openOverview(); };
+
+// 初始化
+loadBingoItems();
+// 預設 4 組
+for(var i=0; i<state.teamCount; i++){
+  state.teams.push({ name: TEAM_DEFAULTS[i], score: 0, bingo: null });
+}
+renderAll();
+</script>
+</body>
+</html>
