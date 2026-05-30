@@ -1,108 +1,786 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <title>CV 上帝控制中心 - 自由模式</title>
-    <style>
-        body { font-family: sans-serif; background: #1a1a2e; color: #fff; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-        .card { background: #16213e; padding: 15px; border-radius: 12px; border: 1px solid #4ecca3; position: relative; }
-        input { background: #0f3460; color: white; border: 1px solid #444; padding: 5px; width: 90%; margin: 5px 0; border-radius: 4px; }
-        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 5px; }
-        .btn-update { background: #4ecca3; color: #1a1a2e; }
-        .btn-refresh { background: #3498db; color: white; font-size: 1.1rem; }
-        .btn-reset { background: #e94560; color: white; }
-        .status-on { color: #4ecca3; font-size: 12px; }
-        .status-off { color: #666; font-size: 12px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>🛠️ 尋寶後台管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e1a;
+  --panel: #111827;
+  --panel2: #1a2333;
+  --border: #1e3a5f;
+  --accent: #00d4ff;
+  --accent2: #ff6b35;
+  --success: #00ff88;
+  --danger: #ff4757;
+  --warn: #ffcc00;
+  --text: #e2e8f0;
+  --muted: #64748b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-title { font-family: 'Orbitron', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.2em; }
+.topbar-right { display: flex; gap: 8px; align-items: center; }
+
+/* ── LOGIN ── */
+.login-wrap {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.login-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 28px;
+  width: 100%; max-width: 360px;
+  text-align: center;
+}
+.login-icon { font-size: 40px; margin-bottom: 12px; }
+.login-title { font-family: 'Orbitron', monospace; font-size: 16px; color: var(--accent); letter-spacing: 0.15em; margin-bottom: 6px; }
+.login-sub { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+.field {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: 'Noto Sans TC', sans-serif;
+  color: var(--text);
+  width: 100%; outline: none;
+  margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.field:focus { border-color: var(--accent); }
+.btn {
+  border: none; border-radius: 8px;
+  padding: 12px 20px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--accent); color: #000; width: 100%; justify-content: center; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-success { background: var(--success); color: #000; }
+.btn-success:hover { opacity: 0.85; }
+.btn-danger  { background: var(--danger);  color: #fff; }
+.btn-danger:hover  { opacity: 0.85; }
+.btn-ghost   { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover   { border-color: var(--accent); color: var(--accent); }
+.btn-warn    { background: var(--warn); color: #000; }
+.btn:active  { transform: scale(0.96); }
+
+.err-msg { color: var(--danger); font-size: 12px; margin-top: 6px; display: none; }
+
+/* ── MAIN LAYOUT ── */
+.main { padding: 20px 16px 60px; max-width: 600px; margin: 0 auto; }
+
+/* ── SECTION ── */
+.section-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px; letter-spacing: 0.2em;
+  color: var(--accent); margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* ── ACTIVITY CARD ── */
+.activity-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.activity-card.active-act { border-color: var(--accent); }
+.activity-header {
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+}
+.activity-header:hover { background: rgba(255,255,255,0.03); }
+.act-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border); flex-shrink: 0;
+  transition: background 0.2s;
+}
+.activity-card.active-act .act-dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+.act-name { flex: 1; font-weight: 700; font-size: 15px; }
+.act-meta { font-size: 11px; color: var(--muted); }
+.act-chevron { color: var(--muted); font-size: 12px; transition: transform 0.3s; }
+.activity-card.open .act-chevron { transform: rotate(180deg); }
+
+.activity-body {
+  display: none;
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border);
+}
+.activity-card.open .activity-body { display: block; }
+
+/* ── STAGE LIST ── */
+.stage-list { margin: 12px 0; }
+.stage-item {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.stage-num {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px; font-weight: 900;
+  color: var(--border); flex-shrink: 0;
+  width: 32px; text-align: center; line-height: 1.3;
+}
+.stage-info { flex: 1; min-width: 0; }
+.stage-title-text { font-weight: 700; font-size: 14px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage-clue-preview { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage-card-id { font-size: 11px; color: var(--accent); font-family: 'Orbitron', monospace; margin-top: 4px; }
+.stage-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.icon-btn {
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 8px; cursor: pointer; font-size: 13px;
+  transition: all 0.2s; color: var(--text);
+}
+.icon-btn:hover { border-color: var(--accent); }
+.icon-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── NFC URL DISPLAY ── */
+.nfc-url-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-family: 'Orbitron', monospace;
+  color: var(--accent);
+  word-break: break-all;
+  margin-top: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  position: relative;
+}
+.nfc-url-box:hover { border-color: var(--accent); }
+.copy-hint { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--muted); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 16px;
+  overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  width: 100%; max-width: 480px;
+  margin: auto;
+  animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-title { font-family: 'Orbitron', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.15em; margin-bottom: 20px; }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 11px; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 5px; display: block; }
+textarea.field { resize: vertical; min-height: 80px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; justify-content: center; }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--panel); border-radius: 10px; padding: 4px; }
+.tab {
+  flex: 1; padding: 8px; text-align: center;
+  font-size: 13px; font-weight: 700;
+  border-radius: 7px; cursor: pointer;
+  transition: all 0.2s; color: var(--muted);
+  border: none; background: none;
+}
+.tab.active { background: var(--accent); color: #000; }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.stat-num { font-family: 'Orbitron', monospace; font-size: 28px; font-weight: 900; color: var(--accent); }
+.stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* ── LEADERBOARD ── */
+.lb-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px; margin-bottom: 6px;
+  font-size: 13px;
+}
+.lb-rank { width: 28px; font-family: 'Orbitron', monospace; font-size: 11px; color: var(--muted); font-weight: 700; }
+.lb-rank.gold { color: var(--warn); }
+.lb-name { flex: 1; font-weight: 700; }
+.lb-stage { color: var(--muted); font-size: 12px; }
+.lb-time { color: var(--success); font-size: 12px; font-family: 'Orbitron', monospace; }
+.lb-done { color: var(--success); font-size: 11px; font-weight: 700; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+}
+.badge-active { background: rgba(0,255,136,0.15); color: var(--success); border: 1px solid rgba(0,255,136,0.3); }
+.badge-inactive { background: rgba(100,116,139,0.15); color: var(--muted); border: 1px solid var(--border); }
+
+.empty-state { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0; }
+
+/* password change */
+.pw-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+</style>
 </head>
 <body>
-    <h1>🛠️ CV 自由模式上帝中心</h1>
-    
-    <div style="background: #0f3460; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-        <button class="btn btn-refresh" onclick="window.randomizeMarket()">🎲 隨機刷新全場卡片</button>
-        <button class="btn btn-reset" onclick="window.initGame()">🔥 重置全場資料</button>
+
+<!-- LOGIN -->
+<div id="loginWrap" class="login-wrap">
+  <div class="login-card">
+    <div class="login-icon">🛠️</div>
+    <div class="login-title">ADMIN PANEL</div>
+    <div class="login-sub">尋寶後台管理系統</div>
+    <input class="field" id="pwInput" type="password" placeholder="輸入管理員密碼">
+    <div class="err-msg" id="pwErr">密碼錯誤，請再試一次</div>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="doLogin()">登入</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appWrap" style="display:none">
+  <div class="topbar">
+    <div class="topbar-title">🛠️ 尋寶後台</div>
+    <div class="topbar-right">
+      <span id="siteUrlBadge" style="font-size:11px;color:var(--muted)"></span>
+      <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="doLogout()">登出</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('activities')">活動管理</button>
+      <button class="tab" onclick="switchTab('monitor')">即時監控</button>
+      <button class="tab" onclick="switchTab('settings')">設定</button>
     </div>
 
-    <h2>🛒 市場即時狀態 (可手動修改)</h2>
-    <div id="market-editor" class="grid"></div>
+    <!-- ── TAB: 活動管理 ── -->
+    <div id="tab-activities">
+      <div class="section-title">
+        <span>活動列表</span>
+        <button class="btn btn-success" style="padding:6px 14px;font-size:12px" onclick="openActivityModal()">＋ 新增活動</button>
+      </div>
+      <div id="activityList"></div>
+    </div>
 
-    <h2>👥 玩家監控 (即時同步資源)</h2>
-    <div id="player-monitor" class="grid"></div>
+    <!-- ── TAB: 即時監控 ── -->
+    <div id="tab-monitor" style="display:none">
+      <div class="section-title">即時監控</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="statTeams">0</div>
+          <div class="stat-label">參賽隊伍</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statFinished">0</div>
+          <div class="stat-label">完成隊伍</div>
+        </div>
+      </div>
+      <div class="section-title" style="margin-bottom:10px">排行榜</div>
+      <div id="monitorLb"></div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px;font-size:13px" onclick="refreshMonitor()">🔄 重新整理</button>
+      <button class="btn btn-danger" style="width:100%;justify-content:center;margin-top:8px;font-size:13px" onclick="clearLeaderboard()">🗑️ 清除所有玩家資料</button>
+    </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <!-- ── TAB: 設定 ── -->
+    <div id="tab-settings" style="display:none">
+      <div class="section-title">網站設定</div>
+      <div class="form-group">
+        <label class="form-label">玩家頁網址（用來產生 NFC 卡片網址）</label>
+        <input class="field" id="siteUrlInput" type="url" placeholder="https://你的帳號.github.io/repo名">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">設定後，關卡的 NFC 網址會自動產生</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveSiteUrl()">儲存網址</button>
 
-    const config = { databaseURL: "https://life-24445-default-rtdb.asia-southeast1.firebasedatabase.app" };
-    const app = initializeApp(config);
-    const db = getDatabase(app);
-    const gRef = ref(db, 'cv_game_state');
+      <div class="pw-section">
+        <div class="section-title" style="margin-bottom:12px">變更管理員密碼</div>
+        <div class="form-group">
+          <label class="form-label">新密碼</label>
+          <input class="field" id="newPwInput" type="password" placeholder="輸入新密碼">
+        </div>
+        <div class="form-group">
+          <label class="form-label">確認新密碼</label>
+          <input class="field" id="newPwConfirm" type="password" placeholder="再輸入一次">
+        </div>
+        <button class="btn btn-warn" style="width:100%;justify-content:center" onclick="changePw()">變更密碼</button>
+      </div>
+    </div>
 
-    // 擴展卡片庫
-    const cardPool = [
-        { n: "創業大師", c: "智慧x3,金錢x1", g: "金錢x4" },
-        { n: "環球旅行", c: "金錢x2", g: "人際x2,健康x1" },
-        { n: "奧運選手", c: "健康x4", g: "健康x2,人際x1" },
-        { n: "知名作家", c: "智慧x2", g: "智慧x2,人際x1" },
-        { n: "米其林主廚", c: "健康x1,智慧x1", g: "人際x2" },
-        { n: "股票經紀", c: "金錢x2,智慧x1", g: "金錢x3" },
-        { n: "慈善家", c: "金錢x3", g: "人際x4" },
-        { n: "冥想導師", c: "智慧x1", g: "健康x3" },
-        { n: "駭客特工", c: "智慧x4", g: "金錢x2,智慧x1" }
-    ];
+  </div>
+</div>
 
-    window.initGame = () => {
-        if(!confirm("確定要重置所有人的資料嗎？")) return;
-        const ps = {};
-        const jobs = ["醫生","工程師","畫家","偵探","廚師","機師","農夫","詩人","導遊","太空人"];
-        for(let i=1; i<=10; i++) ps[i] = { id:i, job:jobs[i-1], allTags:{'金錢':0,'智慧':0,'人際':0,'健康':0}, extraScore:0, active: false };
-        set(gRef, { currentRound: 1, marketCards: cardPool.slice(0, 6).map(x => ({name:x.n, cost:x.c, gains:x.g})), players: ps });
-    };
+<!-- ── MODAL: 活動 ── -->
+<div class="modal-overlay" id="activityModal">
+  <div class="modal">
+    <div class="modal-title" id="actModalTitle">新增活動</div>
+    <div class="form-group">
+      <label class="form-label">活動名稱</label>
+      <input class="field" id="actName" type="text" placeholder="例：2025 夏令營尋寶">
+    </div>
+    <div class="form-group">
+      <label class="form-label">活動日期</label>
+      <input class="field" id="actDate" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">狀態</label>
+      <select class="field" id="actStatus">
+        <option value="active">進行中</option>
+        <option value="inactive">停用</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('activityModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveActivity()">儲存</button>
+    </div>
+  </div>
+</div>
 
-    window.randomizeMarket = () => {
-        const shuffled = cardPool.sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 6).map(x => ({ name: x.n, cost: x.c, gains: x.g }));
-        update(gRef, { marketCards: selected });
-    };
+<!-- ── MODAL: 關卡 ── -->
+<div class="modal-overlay" id="stageModal">
+  <div class="modal">
+    <div class="modal-title" id="stageModalTitle">新增關卡</div>
+    <div class="form-group">
+      <label class="form-label">關卡標題</label>
+      <input class="field" id="stageTitle" type="text" placeholder="例：任務啟動：找到起點">
+    </div>
+    <div class="form-group">
+      <label class="form-label">線索內容</label>
+      <textarea class="field" id="stageClue" placeholder="描述玩家需要去哪裡找 NFC 卡片…"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">提示（選填）</label>
+      <input class="field" id="stageHint" type="text" placeholder="更直接的方向提示">
+    </div>
+    <div class="form-group">
+      <label class="form-label">NFC 卡片 ID（自動產生，可修改）</label>
+      <input class="field" id="stageCardId" type="text" placeholder="NFC-001">
+    </div>
+    <div id="nfcUrlPreview" style="display:none">
+      <div class="form-label" style="margin-top:4px">📡 寫入此網址到 NFC 卡片：</div>
+      <div class="nfc-url-box" id="nfcUrlText" onclick="copyNfcUrl(this)">
+        <span class="copy-hint">點擊複製</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('stageModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveStage()">儲存關卡</button>
+    </div>
+  </div>
+</div>
 
-    onValue(gRef, (snap) => {
-        const data = snap.val(); if(!data) return;
-        // 渲染市場
-        document.getElementById('market-editor').innerHTML = data.marketCards.map((c, i) => `
-            <div class="card">
-                <b>卡槽 ${i+1}</b><br>
-                品相: <input id="n-${i}" value="${c.name}"><br>
-                代價: <input id="c-${i}" value="${c.cost}"><br>
-                獎勵: <input id="g-${i}" value="${c.gains}"><br>
-                <button class="btn btn-update" onclick="window.saveCard(${i})">更新此卡</button>
+<script>
+// ═══════════════════════════════════
+// 資料結構
+// ═══════════════════════════════════
+let db = {
+  activities: [],
+  siteUrl: '',
+  adminPw: 'admin1234'
+};
+
+let editingActivityId = null;
+let editingStageIdx = null;
+let currentActivityId = null; // for stage modal
+
+function loadDb() {
+  const saved = localStorage.getItem('nfc_admin_db');
+  if (saved) db = JSON.parse(saved);
+}
+function saveDb() {
+  localStorage.setItem('nfc_admin_db', JSON.stringify(db));
+  // 同步 STAGES 給玩家頁使用
+  syncStagesToPlayer();
+}
+
+function syncStagesToPlayer() {
+  // 找到 active 的活動
+  const active = db.activities.find(a => a.status === 'active');
+  if (active) {
+    localStorage.setItem('nfc_stages', JSON.stringify(active.stages));
+    localStorage.setItem('nfc_active_activity', JSON.stringify(active));
+  }
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ═══════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════
+function doLogin() {
+  const pw = document.getElementById('pwInput').value;
+  if (pw === db.adminPw) {
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'block';
+    renderAll();
+  } else {
+    document.getElementById('pwErr').style.display = 'block';
+  }
+}
+function doLogout() {
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwErr').style.display = 'none';
+}
+
+// ═══════════════════════════════════
+// TABS
+// ═══════════════════════════════════
+function switchTab(tab) {
+  ['activities','monitor','settings'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
+    document.querySelectorAll('.tab')[['activities','monitor','settings'].indexOf(t)].classList.toggle('active', t===tab);
+  });
+  if (tab === 'monitor') refreshMonitor();
+  if (tab === 'settings') {
+    document.getElementById('siteUrlInput').value = db.siteUrl || '';
+  }
+}
+
+// ═══════════════════════════════════
+// RENDER
+// ═══════════════════════════════════
+function renderAll() {
+  renderActivities();
+  document.getElementById('siteUrlBadge').textContent = db.siteUrl ? '🌐 ' + db.siteUrl.replace('https://','') : '';
+}
+
+function renderActivities() {
+  const el = document.getElementById('activityList');
+  if (!db.activities.length) {
+    el.innerHTML = '<div class="empty-state">還沒有活動，點右上角新增一個！</div>';
+    return;
+  }
+  el.innerHTML = db.activities.map(act => `
+    <div class="activity-card ${act.status==='active'?'active-act':''}" id="act-${act.id}">
+      <div class="activity-header" onclick="toggleActivity('${act.id}')">
+        <div class="act-dot"></div>
+        <div>
+          <div class="act-name">${act.name}</div>
+          <div class="act-meta">${act.date||'未設定日期'} ・ ${act.stages.length} 關卡</div>
+        </div>
+        <span class="badge ${act.status==='active'?'badge-active':'badge-inactive'}">${act.status==='active'?'進行中':'停用'}</span>
+        <span class="act-chevron">▼</span>
+      </div>
+      <div class="activity-body">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="openActivityModal('${act.id}')">✏️ 編輯活動</button>
+          <button class="btn ${act.status==='active'?'btn-ghost':'btn-success'}" style="font-size:12px;padding:6px 12px" onclick="toggleActive('${act.id}')">${act.status==='active'?'⏸ 停用':'▶ 啟用'}</button>
+          <button class="btn btn-danger" style="font-size:12px;padding:6px 12px" onclick="deleteActivity('${act.id}')">🗑️ 刪除</button>
+        </div>
+
+        <div class="section-title" style="margin-bottom:8px">
+          <span>關卡（共 ${act.stages.length} 關）</span>
+          <button class="btn btn-success" style="font-size:11px;padding:5px 10px" onclick="openStageModal('${act.id}')">＋ 新增關卡</button>
+        </div>
+
+        <div class="stage-list">
+          ${act.stages.length ? act.stages.map((s, i) => `
+            <div class="stage-item">
+              <div class="stage-num">${String(i+1).padStart(2,'0')}</div>
+              <div class="stage-info">
+                <div class="stage-title-text">${s.title}</div>
+                <div class="stage-clue-preview">${s.clue}</div>
+                <div class="stage-card-id">📡 ${s.cardId}</div>
+                ${db.siteUrl ? `<div class="nfc-url-box" onclick="copyText('${db.siteUrl}/index.html?card=${s.cardId}', this)" style="margin-top:6px;font-size:10px">
+                  ${db.siteUrl}/index.html?card=${s.cardId}
+                  <span class="copy-hint">複製</span>
+                </div>` : '<div style="font-size:11px;color:var(--muted);margin-top:4px">⚠️ 請先在設定頁填入網址</div>'}
+              </div>
+              <div class="stage-actions">
+                <button class="icon-btn" title="上移" onclick="moveStage('${act.id}',${i},-1)" ${i===0?'disabled':''}>↑</button>
+                <button class="icon-btn" title="下移" onclick="moveStage('${act.id}',${i},1)" ${i===act.stages.length-1?'disabled':''}>↓</button>
+                <button class="icon-btn" title="編輯" onclick="openStageModal('${act.id}',${i})">✏️</button>
+                <button class="icon-btn del" title="刪除" onclick="deleteStage('${act.id}',${i})">🗑️</button>
+              </div>
             </div>
-        `).join('');
-        // 渲染玩家
-        document.getElementById('player-monitor').innerHTML = Object.values(data.players).map(p => `
-            <div class="card">
-                <b>P${p.id}: ${p.job}</b> <span class="${p.active?'status-on':'status-off'}">${p.active?'● 在線':'○ 離線'}</span><br>
-                現有標籤: <small>${JSON.stringify(p.allTags)}</small><br>
-                額外分數: <b>${p.extraScore || 0}</b>
-                <button onclick="window.addScore(${p.id}, 1)">+1</button>
-                <button onclick="window.addScore(${p.id}, -1)">-1</button>
-            </div>
-        `).join('');
-    });
+          `).join('') : '<div class="empty-state" style="padding:16px 0">還沒有關卡</div>'}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
 
-    window.saveCard = (i) => {
-        const name = document.getElementById(`n-${i}`).value;
-        const cost = document.getElementById(`c-${i}`).value;
-        const gains = document.getElementById(`g-${i}`).value;
-        update(ref(db, `cv_game_state/marketCards/${i}`), { name, cost, gains });
-    };
+function toggleActivity(id) {
+  const card = document.getElementById('act-'+id);
+  card.classList.toggle('open');
+}
 
-    window.addScore = (id, amt) => {
-        const pRef = ref(db, `cv_game_state/players/${id}`);
-        onValue(pRef, (s) => {
-            update(pRef, { extraScore: (s.val().extraScore || 0) + amt });
-        }, { onlyOnce: true });
-    };
+// ═══════════════════════════════════
+// ACTIVITY CRUD
+// ═══════════════════════════════════
+function openActivityModal(id) {
+  editingActivityId = id || null;
+  const modal = document.getElementById('activityModal');
+  if (id) {
+    const act = db.activities.find(a => a.id === id);
+    document.getElementById('actModalTitle').textContent = '編輯活動';
+    document.getElementById('actName').value = act.name;
+    document.getElementById('actDate').value = act.date || '';
+    document.getElementById('actStatus').value = act.status;
+  } else {
+    document.getElementById('actModalTitle').textContent = '新增活動';
+    document.getElementById('actName').value = '';
+    document.getElementById('actDate').value = '';
+    document.getElementById('actStatus').value = 'active';
+  }
+  modal.classList.add('open');
+}
+
+function saveActivity() {
+  const name = document.getElementById('actName').value.trim();
+  if (!name) { alert('請輸入活動名稱'); return; }
+  const date = document.getElementById('actDate').value;
+  const status = document.getElementById('actStatus').value;
+
+  if (editingActivityId) {
+    const act = db.activities.find(a => a.id === editingActivityId);
+    act.name = name; act.date = date; act.status = status;
+  } else {
+    db.activities.push({ id: genId(), name, date, status, stages: [] });
+  }
+  saveDb();
+  closeModal('activityModal');
+  renderActivities();
+}
+
+function deleteActivity(id) {
+  if (!confirm('確定要刪除這個活動（包含所有關卡）？')) return;
+  db.activities = db.activities.filter(a => a.id !== id);
+  saveDb(); renderActivities();
+}
+
+function toggleActive(id) {
+  const act = db.activities.find(a => a.id === id);
+  act.status = act.status === 'active' ? 'inactive' : 'active';
+  saveDb(); renderActivities();
+}
+
+// ═══════════════════════════════════
+// STAGE CRUD
+// ═══════════════════════════════════
+function openStageModal(actId, idx) {
+  currentActivityId = actId;
+  editingStageIdx = idx !== undefined ? idx : null;
+  const act = db.activities.find(a => a.id === actId);
+  const modal = document.getElementById('stageModal');
+
+  if (editingStageIdx !== null) {
+    const s = act.stages[editingStageIdx];
+    document.getElementById('stageModalTitle').textContent = `編輯第 ${editingStageIdx+1} 關`;
+    document.getElementById('stageTitle').value = s.title;
+    document.getElementById('stageClue').value = s.clue;
+    document.getElementById('stageHint').value = s.hint || '';
+    document.getElementById('stageCardId').value = s.cardId;
+  } else {
+    const nextNum = act.stages.length + 1;
+    document.getElementById('stageModalTitle').textContent = `新增第 ${nextNum} 關`;
+    document.getElementById('stageTitle').value = '';
+    document.getElementById('stageClue').value = '';
+    document.getElementById('stageHint').value = '';
+    document.getElementById('stageCardId').value = `NFC-${String(nextNum).padStart(3,'0')}`;
+  }
+
+  updateNfcPreview();
+  modal.classList.add('open');
+}
+
+function updateNfcPreview() {
+  const cardId = document.getElementById('stageCardId').value.trim();
+  const preview = document.getElementById('nfcUrlPreview');
+  const urlText = document.getElementById('nfcUrlText');
+  if (db.siteUrl && cardId) {
+    preview.style.display = '';
+    urlText.innerHTML = `${db.siteUrl}/index.html?card=${cardId} <span class="copy-hint">點擊複製</span>`;
+    urlText.onclick = () => copyText(`${db.siteUrl}/index.html?card=${cardId}`, urlText);
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+function saveStage() {
+  const title = document.getElementById('stageTitle').value.trim();
+  const clue  = document.getElementById('stageClue').value.trim();
+  const hint  = document.getElementById('stageHint').value.trim();
+  const cardId = document.getElementById('stageCardId').value.trim();
+  if (!title || !clue || !cardId) { alert('請填入標題、線索和卡片 ID'); return; }
+
+  const act = db.activities.find(a => a.id === currentActivityId);
+  const stage = { title, clue, hint, cardId };
+
+  if (editingStageIdx !== null) {
+    act.stages[editingStageIdx] = stage;
+  } else {
+    act.stages.push(stage);
+  }
+  saveDb();
+  closeModal('stageModal');
+  renderActivities();
+  // re-open the activity
+  setTimeout(() => {
+    const card = document.getElementById('act-'+currentActivityId);
+    if (card && !card.classList.contains('open')) card.classList.add('open');
+  }, 50);
+}
+
+function deleteStage(actId, idx) {
+  if (!confirm('確定要刪除這一關？')) return;
+  const act = db.activities.find(a => a.id === actId);
+  act.stages.splice(idx, 1);
+  saveDb(); renderActivities();
+  setTimeout(() => {
+    const card = document.getElementById('act-'+actId);
+    if (card && !card.classList.contains('open')) card.classList.add('open');
+  }, 50);
+}
+
+function moveStage(actId, idx, dir) {
+  const act = db.activities.find(a => a.id === actId);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= act.stages.length) return;
+  [act.stages[idx], act.stages[newIdx]] = [act.stages[newIdx], act.stages[idx]];
+  saveDb(); renderActivities();
+  setTimeout(() => {
+    const card = document.getElementById('act-'+actId);
+    if (card && !card.classList.contains('open')) card.classList.add('open');
+  }, 50);
+}
+
+// ═══════════════════════════════════
+// MONITOR
+// ═══════════════════════════════════
+function refreshMonitor() {
+  const lb = JSON.parse(localStorage.getItem('nfc_lb') || '[]');
+  document.getElementById('statTeams').textContent = lb.length;
+  document.getElementById('statFinished').textContent = lb.filter(r => r.finished).length;
+
+  const el = document.getElementById('monitorLb');
+  if (!lb.length) {
+    el.innerHTML = '<div class="empty-state">目前沒有玩家資料</div>';
+    return;
+  }
+  const active = db.activities.find(a => a.status === 'active');
+  const total = active ? active.stages.length : '?';
+  el.innerHTML = lb.map((r, i) => `
+    <div class="lb-row">
+      <div class="lb-rank ${i===0?'gold':''}">${i+1}</div>
+      <div class="lb-name">${r.team}</div>
+      <div class="lb-stage">關${r.stage}/${total}</div>
+      ${r.finished ? `<div class="lb-done">✅ ${formatTime(r.time)}</div>` : '<div class="lb-stage">進行中</div>'}
+    </div>
+  `).join('');
+}
+
+function clearLeaderboard() {
+  if (!confirm('確定要清除所有玩家進度資料？（無法復原）')) return;
+  localStorage.removeItem('nfc_lb');
+  localStorage.removeItem('nfc_hunt_state');
+  refreshMonitor();
+  alert('已清除！');
+}
+
+function formatTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════
+function saveSiteUrl() {
+  let url = document.getElementById('siteUrlInput').value.trim().replace(/\/$/, '');
+  if (!url) { alert('請輸入網址'); return; }
+  if (!url.startsWith('http')) url = 'https://' + url;
+  db.siteUrl = url;
+  saveDb();
+  renderAll();
+  alert('✅ 網址已儲存！');
+}
+
+function changePw() {
+  const pw1 = document.getElementById('newPwInput').value;
+  const pw2 = document.getElementById('newPwConfirm').value;
+  if (!pw1) { alert('請輸入新密碼'); return; }
+  if (pw1 !== pw2) { alert('兩次密碼不一致'); return; }
+  db.adminPw = pw1;
+  saveDb();
+  alert('✅ 密碼已變更！');
+  document.getElementById('newPwInput').value = '';
+  document.getElementById('newPwConfirm').value = '';
+}
+
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function copyText(text, el) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = el.querySelector('.copy-hint');
+    if (orig) { orig.textContent = '✅ 已複製'; setTimeout(() => orig.textContent = '複製', 1500); }
+  });
+}
+
+function copyNfcUrl(el) {
+  const text = el.textContent.replace('點擊複製','').trim();
+  copyText(text, el);
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  loadDb();
+  document.getElementById('pwInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('stageCardId').addEventListener('input', updateNfcPreview);
+});
 </script>
 </body>
 </html>

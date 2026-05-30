@@ -521,45 +521,24 @@ body::after {
 
 <script>
 // ═══════════════════════════════════════
-// 關卡資料（修改這裡設定你的活動）
+// 關卡資料（從後台 localStorage 讀取）
 // ═══════════════════════════════════════
-const STAGES = [
-  {
-    id: 1,
-    title: "任務啟動：找到起點",
-    clue: "從集合地點出發，走向今天太陽升起的方向，在最高的那棵樹旁邊，有個東西一直默默守護著這個地方。",
-    hint: "找找看高處，或者地標建築物附近。",
-    cardId: "NFC-001"  // NFC 卡片寫入的 URL 參數
-  },
-  {
-    id: 2,
-    title: "第二關：水的秘密",
-    clue: "生命之源從不遠離人群。找到今天大家補充能量的地方，在那個角落，有個會發出聲音的東西。",
-    hint: "口渴的時候你會去哪裡？",
-    cardId: "NFC-002"
-  },
-  {
-    id: 3,
-    title: "第三關：高處的眼睛",
-    clue: "有人說，想看清楚一件事，就要站得更高。找到這個場地最高的觀察點，在那裡留下了一個秘密。",
-    hint: "爬高一點，往下看。",
-    cardId: "NFC-003"
-  },
-  {
-    id: 4,
-    title: "第四關：沉默的守護者",
-    clue: "每天開始和結束，它都站在那裡。不說話，但每個人都知道它的存在。找到它。",
-    hint: "想想活動開始集合的地方。",
-    cardId: "NFC-004"
-  },
-  {
-    id: 5,
-    title: "最終關：寶藏就在這裡",
-    clue: "所有的旅程都有終點。回到你們今天第一次集合的地方，寶藏就在那裡等著你們。",
-    hint: "回到起點，一切都在那裡。",
-    cardId: "NFC-005"
-  }
+const STAGES_DEFAULT = [
+  { id:1, title:"範例第一關", clue:"這是預設範例，請到後台 admin.html 設定你的活動關卡。", hint:"前往 admin.html", cardId:"NFC-001" }
 ];
+
+function loadStagesFromAdmin() {
+  try {
+    const saved = localStorage.getItem('nfc_stages');
+    if (saved) {
+      const stages = JSON.parse(saved);
+      if (stages && stages.length) return stages;
+    }
+  } catch(e) {}
+  return STAGES_DEFAULT;
+}
+
+const STAGES = loadStagesFromAdmin();
 
 // ═══════════════════════════════════════
 // 遊戲狀態
