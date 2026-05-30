@@ -527,18 +527,26 @@ const STAGES_DEFAULT = [
   { id:1, title:"範例第一關", clue:"這是預設範例，請到後台 admin.html 設定你的活動關卡。", hint:"前往 admin.html", cardId:"NFC-001" }
 ];
 
-function loadStagesFromAdmin() {
-  try {
-    const saved = localStorage.getItem('nfc_stages');
-    if (saved) {
-      const stages = JSON.parse(saved);
-      if (stages && stages.length) return stages;
-    }
-  } catch(e) {}
-  return STAGES_DEFAULT;
-}
+// ↓↓↓ 把後台匯出的程式碼貼在這裡（取代下面這行）↓↓↓
 
-const STAGES = loadStagesFromAdmin();
+const STAGES = [
+  {
+    "id": 1,
+    "title": "1",
+    "clue": "手上",
+    "hint": "",
+    "cardId": "NFC-001"
+  },
+  {
+    "id": 2,
+    "title": "2",
+    "clue": "手上",
+    "hint": "",
+    "cardId": "NFC-002"
+  }
+];
+
+
 
 // ═══════════════════════════════════════
 // 遊戲狀態
