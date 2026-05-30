@@ -303,7 +303,10 @@ textarea.field { resize: vertical; min-height: 80px; }
     <div id="tab-activities">
       <div class="section-title">
         <span>活動列表</span>
-        <button class="btn btn-success" style="padding:6px 14px;font-size:12px" onclick="openActivityModal()">＋ 新增活動</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-warn" style="padding:6px 14px;font-size:12px" onclick="openExportModal()">📤 匯出</button>
+          <button class="btn btn-success" style="padding:6px 14px;font-size:12px" onclick="openActivityModal()">＋ 新增活動</button>
+        </div>
       </div>
       <div id="activityList"></div>
     </div>
@@ -781,6 +784,81 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('stageCardId').addEventListener('input', updateNfcPreview);
 });
+
+// ═══════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════
+function openExportModal() {
+  const sel = document.getElementById('exportActSelect');
+  sel.innerHTML = db.activities.map(a =>
+    `<option value="${a.id}">${a.name}（${a.stages.length} 關）</option>`
+  ).join('');
+  if (!db.activities.length) {
+    sel.innerHTML = '<option>尚無活動</option>';
+    document.getElementById('exportResult').style.display = 'none';
+  } else {
+    generateExportCode();
+  }
+  document.getElementById('exportModal').classList.add('open');
+}
+
+function generateExportCode() {
+  const actId = document.getElementById('exportActSelect').value;
+  const act = db.activities.find(a => a.id === actId);
+  if (!act) return;
+
+  const stagesJson = JSON.stringify(act.stages.map((s, i) => ({
+    id: i + 1,
+    title: s.title,
+    clue: s.clue,
+    hint: s.hint || '',
+    cardId: s.cardId
+  })), null, 2);
+
+  const code = `const STAGES = ${stagesJson};`;
+  document.getElementById('exportCode').value = code;
+  document.getElementById('exportResult').style.display = '';
+}
+
+function copyExportCode() {
+  const code = document.getElementById('exportCode').value;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('#exportModal .btn-warn');
+    btn.textContent = '✅ 已複製！';
+    setTimeout(() => btn.textContent = '📋 複製程式碼', 2000);
+  });
+}
+
 </script>
+
+<!-- ── MODAL: 匯出 ── -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <div class="modal-title">📤 匯出關卡到 index.html</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7">
+      選擇要匯出的活動，複製產生的程式碼，貼到 <code style="color:var(--accent);background:var(--bg);padding:2px 6px;border-radius:4px">index.html</code> 裡的指定位置，再上傳 GitHub 即可。
+    </p>
+    <div class="form-group">
+      <label class="form-label">選擇活動</label>
+      <select class="field" id="exportActSelect" onchange="generateExportCode()"></select>
+    </div>
+    <div id="exportResult" style="display:none">
+      <div class="form-label" style="margin-bottom:6px">複製以下程式碼，貼到 index.html 裡 <code style="color:var(--accent)">// [貼上匯出的關卡資料]</code> 那一行：</div>
+      <textarea class="field" id="exportCode" style="min-height:160px;font-size:11px;font-family:monospace;color:var(--accent)" readonly onclick="this.select()"></textarea>
+      <button class="btn btn-warn" style="width:100%;justify-content:center;margin-top:8px" onclick="copyExportCode()">📋 複製程式碼</button>
+      <div style="margin-top:12px;padding:12px;background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.2);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.8">
+        <strong style="color:var(--accent)">貼上步驟：</strong><br>
+        1. 打開 <code style="color:var(--accent)">index.html</code>（用記事本或 VS Code）<br>
+        2. 搜尋 <code style="color:var(--accent)">// [貼上匯出的關卡資料]</code><br>
+        3. 把那一行換成複製的程式碼<br>
+        4. 存檔，上傳 GitHub
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeModal('exportModal')">關閉</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
